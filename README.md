@@ -4,7 +4,7 @@
 
 - [1장 JPA 소개](contents/1/README.md)
 - [2장 JPA 시작](contents/2/README.md)
-- 3장 영속성 관리
+- [3장 영속성 관리](contents/3/README.md)
 - 4장 엔티티 매핑
 - 5장 연관관계 매핑 기초
 - 6장 다양한 연관관계 매핑
