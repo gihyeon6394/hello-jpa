@@ -120,19 +120,48 @@ em.remove(karina);
 
 ### 4.1 엔티티 조회
 
-#### 1차 캐시
+#### 1차 캐시에서 조회
 
 - persistence context 내부 캐시
 - 영속 상태의 Entity는 모두 이곳에 저장
 - \<`@Id`, Entity Instance\> 형태로 저장
 - `@Id` : persistence context 내부의 key, DB의 PK
     - persistence context에 저장하고 조회하는 기준
+- **DB 조회 없으므로 성능 이점**
 
 ````
 Member member = em.find(Member.class, "member01"); // key 값으로 조회
 ````
 
+- `find()` : 1차 캐시에서 조회하고 없으면 DB에 조회
 
+````
+Member karina = new Member();
+member.setId("member01");
+member.setMembername("카리나");
+
+em.persist(member); // 1차 캐시에 저장
+
+Member findMember = em.find(Member.class, "member01"); // 1차 캐시에서 조회
+````
+
+#### 데이터베이스에서 조회
+
+- 1차 캐시에 없으면 DB에서 조회
+- 조회 후 `EntityManger`에 저장 후 반환
+
+#### 영속성 Entity의 동일성 보장, identity
+
+````
+Member karina1 = em.find(Member.class, "member01");
+Member karina2 = em.find(Member.class, "member01");
+
+System.out.println(karina1 == karina2); // true
+````
+
+- 성능상 이점과 동일성을 동시에 보장
+
+### 4.2 엔티티 등록
 
 ## 5. 플러시
 
