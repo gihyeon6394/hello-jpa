@@ -120,6 +120,8 @@ em.remove(karina);
 
 ### 4.1 엔티티 조회
 
+<img src="img_2.png" width="70%">
+
 #### 1차 캐시에서 조회
 
 - persistence context 내부 캐시
@@ -297,6 +299,119 @@ List<Member> members = em.createQuery("select m from Member m", Member.class).ge
 em.setFlushMode(FlushModeType.COMMIT); // 플러시 모드 변경
 ````
 
-## 6. 준영속
+## 6. 준영속, detached
+
+- 영속 상태의 Entity가 영속성 컨텍스트에서 분리
+- **준영속 상태의 Entity는 영속성 컨텍스트가 제공하는 기능을 사용할 수 없음**
+- 영속성 컨텍스트가 종료되면서 자동으로 준영속 상태가 되므로, 명시적으로 호출할 일은 거의 없음
+- 준영속 상태로 만드는 방법
+    - `em.detach(entity)` : 특정 Entity만 준영속 상태로 전환
+    - `em.clear()` : 영속성 컨텍스트를 완전히 초기화
+    - `em.close()` : 영속성 컨텍스트를 종료
+
+### 6.1 엔티티를 준영속 상태로 전환 : `detach()`
+
+````
+em.persist(karina); // 영속성 컨텍스트에 저장
+em.persist(hani);
+em.detach(karina); // 영속성 컨텍스트에서 분리
+
+tx.commit(); // karia는 영속성 컨텍스트에서 분리되어 있으므로 커밋되지 않음
+````
+
+- `em.detach()`를 호출하는 순간 1차 캐시, 쓰기 지연 저장소에서 해당 Eintity 관련 정보 제거
+
+### 6.3 영속성 컨텍스트 초기화 : `clear()`
+
+- 영속성 컨텍스트의 Entity를 모두 준영속 상태로 만듦
+
+````
+em.clear(); // 영속성 컨텍스트 초기화
+
+karina.setAge(20); // 준영속 상태이므로 변경 감지가 동작하지 않음
+````
+
+### 6.4 영속성 컨텍스트 종료 : `close()`
+
+- 영속성 컨텍스트가 종료되면 해당 `EntityManger`가 관리하던 영속 상태의 Entity는 모두 준영속 상태가 됨
+
+````
+em.find(Member.class, "member01"); // 영속성 컨텍스트에 저장
+em.find(Member.class, "member02"); // 영속성 컨텍스트에 저장
+
+//...
+
+tx.commit();
+em.close(); // 영속성 컨텍스트 종료
+````
+
+### 6.4 준영속 상태의 특징
+
+#### 거의 비영속 상태에 가까움
+
+- 1차캐시, 쓰기 지연, 변경감지 등 영속성 컨텍스트가 제공하는 기능을 사용할 수 없음
+
+#### 식별자 값을 가짐
+
+- 이미 한번 영속상태였기 때문에 식별자 값을 가짐
+
+#### 지연 로딩을 할 수 없음, `LAZY LODING`
+
+- LAZY LOADING : 영속성 컨텍스트에 실제 객체를 로딩해두고, proxy 객체를 반환
+    - 실제 사용 시 실제 객체를 로딩
+
+#### 6.5 병합: `merge()`
+
+- detached -> managed
+- 준영속 entity를 받아서 그 정보 그대로 새로운 영속 entity를 만들어서 반환
+
+````
+Member karina = em.find(Member.class, "member01");
+karina.getAge(); // 19
+
+tx1.commit();
+em1.close(); // 준영속 상태로 만듦
+
+karina.setAge(20); // 변경 감지 없음
+
+Member newKarina = em2.merge(karina); // 새로운 영속 entity 반환
+newKarina.getAge(); // 20
+
+em.conatins(karina); // false
+em.conatins(newKarina); // true
+
+tx2.commit(); // 20으로 UPDATE
+````
+
+#### `merge()` 동작 방식
+
+1. `merge()` 실행
+2. 파라미터로 받은 Entity를 1차 캐시에 저장
+    - DB에서 조회해옴
+3. 파라미터로 받은 Entity를 1차 캐시에 저장한 Entity에 복사
+4. 복사된 Entity를 반환
+
+#### 비영속 병합
+
+비영속 Entity를 영속 상태로 만듦
+
+````
+Member karina = new Member();
+Member newKarina = em.merge(karina);
+tx.commit();
+````
+
+- 병합은 준영속, 비영속을 신경쓰지 않음
+- `save or update` :  식별자 값 `@Id`로 Entity를 조회할 수 있으면 불러서 병합, 없으면 생성해서 병합
 
 ## 7. 정리
+
+- `EntityManger`는 `EntityMangerFactory`를 통해 생성
+- 영속성 컨텍스트 : application과 DB 사이에서 객체를 보관하는 공간
+    - `EntityManger`를 통해 영속성 컨텍스트에 접근
+    - 1차 캐시, 동일성 보장, 쓰기 지연, 변경 감지 등 제공
+- `flush()` : 영속성 컨텍스트의 변경 내용을 DB에 반영
+    - `commit()` 시 자동 호출
+- 영속 상태 : 영속성 컨텍스트에 저장된 상태
+- 준영속 상태 : 영속성 컨텍스트에서 분리된 상태
+    - 영속성 컨텍스트가 제공하는 기능 사용 불가
