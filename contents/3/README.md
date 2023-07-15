@@ -250,6 +250,53 @@ tx.commit(); // 커밋할 때 DELETE SQL을 보냄
 
 ## 5. 플러시
 
+- 영속성 컨텍스트의 변경내용을 데이터베이스에 **반영**
+- 현재까지의 영속성 컨텍스트 내용을 데이터베이스와 **동기화**
+    - **영속성 컨텍스트를 DB에 반영하고 Entity를 지우는 것이 아님**
+- 변경 감지가 동작해서 변경된 Entity가 있으면 UPDATE SQL을 쓰기 지연 SQL 저장소에 보냄
+- 쓰기 지연 저장소의 쿼리를 데이터베이스에 보냄 (등록, 수정, 삭제)
+- 플러시 방법
+    - `em.flush()` 직접 호출
+    - 트랜잭션 커밋시 자동 호출
+    - JPQL 쿼리 실행시 자동 호출
+
+#### `em.flush()` 직접 호출
+
+- `EntityManger`의 `flush()` 메서드를 직접 호출
+- 강제 flush
+- 테스트나 다른 특별한 경우가 아니면 거의 사용하지 않음
+
+#### 트랜잭션 커밋시 자동 호출
+
+- 트랜잭션 커밋시 `EntityManger`의 `flush()` 메서드가 자동 호출
+
+#### JPQL 쿼리 실행시 자동 호출
+
+- JPQL, Criteria 쿼리 실행시 `EntityManger`의 `flush()` 메서드가 자동 호출
+- 영속성 컨텍스트를 플러시하고 JPQL 쿼리를 데이터베이스에 전달
+
+````
+em.persist(karina);
+em.persist(hani);
+em.persist(sana);
+
+// JPQL 실행
+List<Member> members = em.createQuery("select m from Member m", Member.class).getResultList(); // karina, hani, sana
+````
+
+- JPQL 실행 전까지의 내용을 `flush`한 뒤 JPQL 쿼리를 실행
+
+### 5.1 플러시 모드 옵션
+
+- `EntityManger`의 flush 모드를 직접 지정
+- `javax.persistence.FlushModeType`에 정의되어 있음
+    - `FlushModeType.AUTO` : 커밋이나 쿼리를 실행할 때 플러시 (기본값)
+    - `FlushModeType.COMMIT` : 커밋할 때만 플러시
+
+````
+em.setFlushMode(FlushModeType.COMMIT); // 플러시 모드 변경
+````
+
 ## 6. 준영속
 
 ## 7. 정리
