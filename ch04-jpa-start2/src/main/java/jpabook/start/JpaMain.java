@@ -21,6 +21,7 @@ public class JpaMain {
 
             tx.begin(); //트랜잭션 시작
             logic(em);  //비즈니스 로직
+            logic2(em);
             tx.commit();//트랜잭션 커밋
 
         } catch (Exception e) {
@@ -33,19 +34,31 @@ public class JpaMain {
         emf.close(); //엔티티 매니저 팩토리 종료
     }
 
+    private static void logic2(EntityManager em) {
+        Board board1 = new Board();
+        board1.setTitle("제목1");
+        em.persist(board1);
+        System.out.println("1. board.id = " + board1.getId());
+
+        Board board2 = new Board();
+        board2.setTitle("제목2");
+        em.persist(board2);
+        System.out.println("2. board.id = " + board2.getId());
+    }
+
     public static void logic(EntityManager em) {
 
         String id = "id1";
-        Member member = new Member();
-        member.setId(id);
-        member.setUsername("지한");
-        member.setAge(2);
+        Member karina = new Member();
+        karina.setId(id);
+        karina.setUsername("karina");
+        karina.setAge(2);
 
         //등록
-        em.persist(member);
+        em.persist(karina);
 
         //수정
-        member.setAge(20);
+        karina.setAge(20);
 
         //한 건 조회
         Member findMember = em.find(Member.class, id);
@@ -56,7 +69,7 @@ public class JpaMain {
         System.out.println("members.size=" + members.size());
 
         //삭제
-        em.remove(member);
+        em.remove(karina);
 
     }
 }
