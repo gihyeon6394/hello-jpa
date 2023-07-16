@@ -19,6 +19,7 @@ public class OrderItem {
     @Column(name = "ORDER_ID")
     private Long orderId;
 
+
     private int orderPrice; //주문 가격
     private int count;      //주문 수량
 

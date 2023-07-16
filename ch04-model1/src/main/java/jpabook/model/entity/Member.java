@@ -1,27 +1,33 @@
 package jpabook.model.entity;
 
-import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
+import javax.persistence.*;  //**
+import java.util.Date;
 
 /**
- * Created by holyeye on 2014. 3. 11..
+ * User: HolyEyE
+ * Date: 13. 5. 24. Time: 오후 7:43
+ * modified by kgh 2023. 7. 16
  */
 
 @Entity
+@Table(name = "MEMBER")
 public class Member {
 
-    @Id @GeneratedValue
-    @Column(name = "MEMBER_ID")
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "NAME")
     private String name;
 
+    @Column(name = "CITY")
     private String city;
-    private String street;
-    private String zipcode;
 
-    //Getter, Setter
+    @Column(name = "STREET")
+    private String street;
+
+    @Column(name = "ZIPCODE")
+    private String zipcode;
 
     public Long getId() {
         return id;

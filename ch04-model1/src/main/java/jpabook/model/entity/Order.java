@@ -5,26 +5,28 @@ import java.util.Date;
 
 /**
  * Created by holyeye on 2014. 3. 11..
+ * modified by kgh 2023. 7. 16
  */
 @Entity
-@Table(name = "ORDERS")
+@Table(name = "ORDERS") // Mysql `ORDER` 는 예약어
 public class Order {
 
     @Id
-    @GeneratedValue
     @Column(name = "ORDER_ID")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "MEMBER_ID")
     private Long memberId;
 
     @Temporal(TemporalType.TIMESTAMP)
-    private Date orderDate;     //주문시간
+    @Column(name = "ORDER_DATE")
+    private Date orderDate;
 
     @Enumerated(EnumType.STRING)
-    private OrderStatus status;//주문상태
+    @Column(name = "STATUS")
+    private OrderStatus status;
 
-    //Getter, Setter
     public Long getId() {
         return id;
     }

@@ -641,3 +641,22 @@ public class Member {
     - Entity를 먼저 작성한 뒤 자동 DDL을 통해 스키마를 생성
 - JPA 기본 키 매핑 전략, `SEQUENCE`, `IDENTITY`, `TABLE`
 
+## 실전 예제 1. 요구사항 분석과 기본 매핑
+
+- 데이터 중심 설계 : 각 객체가 식별값으로 참조 하고 있음
+    - 객체 그래프 탐색 시 한번 더 쿼리를 날려야함
+- 객체 지향 설계 : 참조 대상을 직접 참조
+
+#### 데이터 중심 설계의 객체 그래프 탐색
+
+````
+Member karina = em.find(Member.class, "karina001");
+Team aespa = em.find(Team.class, karina.getTeamId());
+````
+
+#### 객체 지향 설계의 객체 그래프 탐색
+
+````
+Member karina = em.find(Member.class, "karina001");
+Team aespa = karina.getTeam();
+````

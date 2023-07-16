@@ -9,12 +9,18 @@ import javax.persistence.*;
 @Entity
 public class Item {
 
-    @Id @GeneratedValue
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ITEM_ID")
     private Long id;
 
+    @Column(name = "NAME")
     private String name;        //이름
+
+    @Column(name = "PRICE")
     private int price;          //가격
+
+    @Column(name = "STOCK_QUANTITY")
     private int stockQuantity;  //재고수량
 
 
