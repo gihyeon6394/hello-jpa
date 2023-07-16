@@ -407,5 +407,237 @@ public class Board {
 
 ## 7. 필드와 컬럼 매핑 : 레퍼런스
 
+JPA가 제공하는 필드-컬럼 매핑용 어노테이션  
+[Hibernate Docs > Mapping Annotations > JPA annotations](https://docs.jboss.org/hibernate/orm/5.4/userguide/html_single/Hibernate_User_Guide.html#annotations-jpa)
+
+- 필드-컬럼 매핑
+    - `@Column` : 컬럼 매핑
+    - `@Enumerated` : 자바 enum 타입 매핑
+    - `@Temporal` : 날짜 타입 매핑
+    - `@Lob` : BLOB, CLOB 매핑
+    - `@Transient` : 특정 필드를 컬럼에 매핑하지 않음
+- 기타
+    - `@Access` : JPA가 엔티티에 접근하는 방식 지정
+
+### 7.1 `@Column`
+
+- 객체 필드를 테이블 컬럼에 매핑
+- `name`, `nullable` 외에는 잘 사용 안됨
+
+| 속성                       | 기능                                                                 | 기본값                              |
+|--------------------------|--------------------------------------------------------------------|----------------------------------|
+| `name`                   | 필드와 매핑할 테이블 컬럼 이름                                                  | 객체의 필드 이름                        |
+| `insertable`             | 엔티티 저장 시, 이 필드도 같이 저장할지 여부<br/>`false` : 읽기 전용                     | `true`                           |
+| `updatable`              | 엔티티 수정 시, 이 필드도 같이 수정할지 여부<br/>`false` : 읽기 전용                     | `true`                           |
+| `table`                  | 하나의 Entity를 두개 이상의 테이블에 매핑할 때 사용                                   | 현재 클래스가 매핑된 테이블                  |
+| `nullable` DDL           | `NOT NULL` 제약조건을 사용할지 여부                                           | `true`                           |
+| `unique` DDL             | `UNIQUE` 제약조건을 사용할지 여부 <br/>컬럼 레벨에서 단일 컬럼에 제약조건 추가 시 사용            |                                  |
+| `columnDefinition` DDL   | 데이터베이스 컬럼 정보를 직접 줄 수 있음                                            | 필드 타입, 방언을 사용                    |
+| `length` DDL             | 문자 길이 제약조건, String 타입에만 사용                                         | 255                              |
+| `precision`, `scale` DDL | BigDecimal 타입에서 사용, `precision`은 소수점을 포함한 전체 자릿수, `scale`은 소수의 자릿수 | `precision` = 19<br/>`scale` = 2 |
+
+#### `@Column`과 NOT NULL 제약조건
+
+- java 기본형 사용 시 `nullable = false`가 안전함
+- `@Column`생략 + Java 기본형 = Not Null 제약조건이 붙음
+- `@Column`생략 + Java 래퍼 클래스 = Not Null 제약조건이 붙지 않음
+- `@Column` + Java 기본형 = Not Null X
+    - 따라서 `@Column(nullable = false)`를 명시해주는 것이 안전
+
+### 7.2 `@Enumerated`
+
+- 자바 enum 타입을 매핑할 때 사용
+- `EnumType.ORDINAL` (기본값) : enum 순서를 DB에 저장, e.g. 1, 2, 3
+    - 데이터베이스 저장 값이 작음
+    - enum 순서가 바뀌면 데이터베이스에 저장된 값이 달라짐
+- `EnumType.STRING` **(권장)** : enum 이름을 DB에 저장, e.g. `ADMIN`, `USER`, ...
+    - 데이터베이스 저장 값이 큼
+    - Java enum의 순서에 의존하지 않음
+
+<details>
+<summary>예제</summary>
+
+````
+enum RoleType {
+    ADMIN, USER
+}
+
+@Enumerated(EnumType.STRING)
+private RoleType roleType;
+
+member.setRoleType(RoleType.ADMIN);
+em.persist(member); // role_type = 'ADMIN'
+````
+
+</details>
+
+### 7.3 `@Temporal`
+
+- 날짜 타입을 매핑할 때 사용
+    - `java.util.Date`, `java.util.Calendar`
+- `@Temporal` 생략시 timestamp 타입으로 로 DDL 생성
+    - MySQL : datetime
+- `TemporalType` 필수로 지정해야함
+- `TemporalType.DATE` : 날짜, 데이터베이스 date 타입과 매핑
+    - e.g. `2021-01-01`
+- `TemporalType.TIME` : 시간, 데이터베이스 time 타입과 매핑
+    - e.g. `12:34:56`
+- `TemporalType.TIMESTAMP` : 날짜와 시간, 데이터베이스 timestamp 타입과 매핑
+    - e.g. `2021-01-01 12:34:56`
+
+<details>
+<summary>예제</summary>
+
+````
+@Temporal(TemporalType.DATE)
+private Date date; // 날짜
+
+@Temporal(TemporalType.TIME)
+private Date time; // 시각
+
+@Temporal(TemporalType.TIMESTAMP)
+private Date timestamp; // 날짜 + 시각
+
+// DDL
+create table tb (
+    date date,
+    time time,
+    timestamp timestamp
+)
+````
+
+</details>
+
+### 7.4 `@Lob`
+
+- DB의 BLOB, CLOB 타입과 매핑
+- CLOB : String, char[], java.sql.CLOB
+- BLOB : byte[], java.sql.BLOB
+
+<details>
+<summary>예제</summary>
+
+````
+@Lob
+private string lobString; // CLOB
+
+@Lob 
+private byte[] lobByte; // BLOB
+
+// DDL
+// Oracle
+create table tb (
+    lobString clob,
+    lobByte blob
+)
+
+// MySQL
+create table tb (
+    lobString longtext,
+    lobByte longblob
+)
+````
+
+</details>
+
+### 7.5 `@Transient`
+
+- DB에 매핑하지 않음
+- 객체에 임시로 어떤 값을 보관하고 싶을 때 사용
+
+### 7.6 `@Access`
+
+- JPA가 엔티티에 접근하는 방식 지정
+- `AccessType.FIELD` : 필드에 직접 접근, private 필드도 접근 가능
+- `AccessType.PROPERTY` : 접근자(getter)를 통해서만 접근
+- `@Id`가 필드에 있으면 `AccessType.FIELD`, 접근자에 있으면 `AccessType.PROPERTY`로 동작
+
+<details>
+<summary>예제 - 필드 접근</summary>
+
+````
+@Entity
+@Access(AccessType.FIELD)
+public class Member {
+    @Id
+    private Long id;
+    
+    private String name;
+    
+    // getter, setter
+}
+````
+
+- `@Id`가 필드에 붙어있기 때문에 필드 접근 방식으로 동작
+- `@Acess` 생략가능
+
+</details>
+
+<details>
+<summary>예제 - 프로퍼티 접근</summary>
+
+````
+@Entity
+@Access(AccessType.PROPERTY)
+public class Member {
+    private Long id;
+    
+    private String name;
+    
+    @Id
+    public Long getId() {
+        return id;
+    }
+    
+    @Column(name = "name")
+    public Stirng getName() {
+        return name;
+    }
+    
+    // getter, setter
+}
+````
+
+- `@Id`가 접근자(getter)에 붙어있기 때문에 프로퍼티 접근 방식으로 동작
+- `@Acess` 생략가능
+
+</details>
+
+<details>
+<summary>예제 - 필드, 프로퍼티 혼용</summary>
+
+````
+@Entity
+public class Member {
+    @Id
+    private Long id;
+    
+    @Transient 
+    private String firstName;
+    
+    @Transient
+    private String lastName;
+    
+    @Access(AccessType.PROPERTY)
+    public String getFullName() {
+        return firstName + lastName;
+    }
+    
+    // getter, setter
+}
+````
+
+- `@Id`가 필드에 있기 떄문에 필드 접근 방식으로 동작
+- `getFullName()`은 프로퍼티 접근 방식으로 동작
+    - JPA는 db full_name 컬럼에 접근할 때 `getFullName()`을 사용
+
+</details>
+
 ## 8. 정리
+
+- 객체와 테이블의 매핑 방법
+    - 기본키, 컬럼 매핑
+- DB 스키마 자동 생성 방법
+    - Entity를 먼저 작성한 뒤 자동 DDL을 통해 스키마를 생성
+- JPA 기본 키 매핑 전략, `SEQUENCE`, `IDENTITY`, `TABLE`
 
