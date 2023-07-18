@@ -1,5 +1,8 @@
 package jpabook.model.entity;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
 import javax.persistence.*;
 
 /**
@@ -8,37 +11,26 @@ import javax.persistence.*;
 @Entity
 @Table(name = "ORDER_ITEM")
 public class OrderItem {
-
-    @Id @GeneratedValue
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ORDER_ITEM_ID")
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "ITEM_ID")
-    private Item item;      //주문 상품
 
     @ManyToOne
     @JoinColumn(name = "ORDER_ID")
-    private Order order;    //주문
+    private Order order;
 
-    private int orderPrice; //주문 가격
-    private int count;      //주문 수량
+    @ManyToOne
+    @JoinColumn(name = "ITEM_ID")
+    private Item item;
 
-    //Getter, Setter
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Item getItem() {
-        return item;
-    }
-
-    public void setItem(Item item) {
-        this.item = item;
     }
 
     public Order getOrder() {
@@ -49,28 +41,17 @@ public class OrderItem {
         this.order = order;
     }
 
-    public int getOrderPrice() {
-        return orderPrice;
+    public Item getItem() {
+        return item;
     }
 
-    public void setOrderPrice(int orderPrice) {
-        this.orderPrice = orderPrice;
-    }
-
-    public int getCount() {
-        return count;
-    }
-
-    public void setCount(int count) {
-        this.count = count;
+    public void setItem(Item item) {
+        this.item = item;
     }
 
     @Override
     public String toString() {
-        return "OrderItem{" +
-                "id=" + id +
-                ", buyPrice=" + orderPrice +
-                ", count=" + count +
-                '}';
+        return ToStringBuilder
+                .reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
     }
 }
