@@ -8,7 +8,7 @@
 - [4장 엔티티 매핑](contents/4/README.md)
 - [5장 연관관계 매핑 기초](contents/5/README.md)
 - [6장 다양한 연관관계 매핑](contents/6/README.md)
-- 7장 고급 매핑
+- [7장 고급 매핑](contents/7/README.md)
 - 8장 프록시와 연관관계 관리
 - 9장 값 타입
 - 10장 객체지향 쿼리 언어
