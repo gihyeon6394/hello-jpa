@@ -506,7 +506,7 @@ public class AlbumId implements Serializable {
 }
 ````
 
-#### 3.4 비식별 관계로 구현
+### 3.4 비식별 관계로 구현
 
 <img src="img_15.png" width="70%">
 
@@ -641,7 +641,7 @@ public class Foo {
 
 #### 조인 테이블 사용
 
-<img src="img_20.png" width="50%">
+<img src="img_20.png" width="70%">
 
 ### 4.1 1:1: 조인 테이블
 
@@ -681,7 +681,7 @@ public class IdolMember {
 
 ### 4.2 1:N 조인 테이블
 
-<img src="img_24.png" width="70%">
+<img src="img_24.png" width="80%">
 
 ```java
 
@@ -751,7 +751,7 @@ public class IdolMember {
 
 ### 4.4 N:M 조인 테이블
 
-<img src="img_25.png" width="70%">
+<img src="img_25.png" width="80%">
 
 ```java
 
