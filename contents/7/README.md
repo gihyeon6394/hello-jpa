@@ -800,7 +800,6 @@ public class Album {
     @GeneratedValue
     @Column(name = "ALBUM_ID")
     private Long id;
-
     private String name;
 
     @Column(table = "ALBUM_DETAIL")

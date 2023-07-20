@@ -309,10 +309,160 @@ public class Foo {
 } 
 ````
 
+### 4.1 영속성 전이 : 저장
 
+````java
 
-## 5. 고아 객체
+@Entity
+public class Team {
+    @Id
+    @GeneratedValue
+    @Column(name = "TEAM_ID")
+    private Long id;
+
+    @OneToMany(mappedBy = "team", cascade = CascadeType.PERSIST)
+    private List<IdolMember> idolMembers = new ArrayList<>();
+
+    //...
+}
+
+public class Foo {
+
+    public void saveTeamWithIdols() {
+        Team aespa = new Team("aespa");
+
+        IdolMember karina = new IdolMember("aespa001", "카리나");
+        karina.setTeam(aespa); // 연관관계 설정
+        aespa.getIdolMembers().add(karina);
+
+        IdolMember winter = new IdolMember("aespa002", "윈터");
+        winter.setTeam(aespa); // 연관관계 설정
+        aespa.getIdolMembers().add(winter);
+
+        em.persist(aespa); // 부모 Entity를 영속상태로 만듦
+
+    }
+} 
+````
+
+- `cascade = CascadeType.PERSIST` : 부모가 영속화 될 떄 자식들도 함께 영속화
+    - 부모의 영속화가 자식들에게 전이됨
+
+### 4.2 영속성 전이 : 삭제
+
+````
+Team aespa = em.find(Team.class, "aespa");
+Idolmember karina = em.find(Idolmember.class, "aespa001");
+Idolmember winter = em.find(Idolmember.class, "aespa002");
+
+em.remove(aespa); // 부모 Entity 삭제
+em.remove(karina); // 자식 Entity 삭제
+em.remove(winter); // 자식 Entity 삭제
+````
+
+- `cascade = CascadeType.REMOVE` : 부모가 삭제될 때 자식들도 함께 삭제
+    - 부모의 삭제가 자식들에게 전이됨
+
+````
+Team aespa = em.find(Team.class, "aespa");
+em.remove(aespa); // 부모 Entity 삭제, 자식 Entity 삭제
+````
+
+### 4.3 CASCADE 종류
+
+`javax.persistence.CascadeType`
+
+```java
+
+package javax.persistence;
+
+public enum CascadeType {
+    ALL, // 모두 적용
+    PERSIST, // 영속 
+    MERGE,  // 병합
+    REMOVE, // 삭제
+    REFRESH, // REFRESH
+    DETACH; // DETACH
+
+    private CascadeType() {
+    }
+}
+
+```
+
+## 5. 고아 객체, ORPHAN
+
+- 고아 객체 : 부모 Entity와 연관관계가 끊어진 자식 Entity
+- JPA는 고아 객체를 자동으로 삭제하는 기능을 제공
+    - 부모 Entity의 컬렉션에서 자식 Entity 참조가 제거되면, 자식 Entity가 삭제됨
+- **참조가 제거된 고아는 다른곳에서도 안쓴다고 간주하고 삭제**
+- 부모가 제거되면 자식이 제거되는 기능 제공
+    - `CascadeType.REMOVE`와 같음
+
+```java
+
+@Entity
+public class Team {
+    @Id
+    @GeneratedValue
+    @Column(name = "TEAM_ID")
+    private Long id;
+
+    @OneToMany(mappedBy = "team", orphanRemoval = true)
+    private List<IdolMember> idolMembers = new ArrayList<>();
+
+    //...
+}
+
+public class Foo {
+
+    public void saveTeamWithIdols() {
+        Team aespa = em.find(Team.class, "aespa");
+        aespa.getIdolMembers().remove(0); // 자식 Entity 삭제
+        // aespa.getIdolMembers().clear(); // 자식 Entity 전체 삭제
+    }
+}
+```
+
+````sql
+DELETE
+FROM IDOL_MEMBER
+WHERE IDOL_MEMBER_ID = ?
+````
 
 ## 6. 영속성 전이 + 고아 객체, 생명주기
 
+```java
+
+@Entity
+public class Team {
+    @Id
+    @GeneratedValue
+    @Column(name = "TEAM_ID")
+    private Long id;
+
+    @OneToMany(mappedBy = "team", orphanRemoval = true, cascade = CascadeType.ALL)
+    private List<IdolMember> idolMembers = new ArrayList<>();
+
+    //...
+}
+
+public class Foo {
+
+    public void saveTeamWithIdols() {
+        Team aespa = em.find(Team.class, "aespa");
+        aespa.addIdolMember(karina); // 자식 Entity 저장
+    }
+}
+```
+
+- `orphanRemoval = true, cascade = CascadeType.ALL` : 부모 Entity를 통해 자식 Entity를 관리 가능
+
 ## 7. 정리
+
+- JPA 는 프록시를 통해 객체 그래프를 효율적으로 탐색
+- 즉시 로딩 : 객체 그래프를 한번에 가져옴
+- 지연 로딩 : 객체 그래프를 사용하는 시점에 가져옴
+- 영속성 전이 : 객체를 저장할때 연관 Entity도 함께 저장
+- 고아 객체 제거 : 연관 Entity와 관계를 끊었을 때, 연관 Entity를 자동으로 삭제
+
