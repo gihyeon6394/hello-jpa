@@ -7,7 +7,7 @@ import javax.persistence.*;
 /**
  * Created by holyeye on 2014. 3. 11..
  */
-@Entity
+// @Entity
 @Table(name = "ORDER_ITEM")
 public class OrderItem {
 

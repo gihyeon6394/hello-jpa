@@ -1,13 +1,6 @@
-package jpabook.model.entity.item;
+package jpabook.model.practice.entity.item;
 
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
 
-/**
- * Created by holyeye on 2014. 3. 11..
- */
-// @Entity
-@DiscriminatorValue("M")
 public class Movie extends Item {
 
     private String director;

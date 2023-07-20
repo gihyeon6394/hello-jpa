@@ -27,7 +27,7 @@
             <!-- 기본 매핑 전략 -->
             <!--물리-->
             <property name="hibernate.physical_naming_strategy"
-                      value="jpabook.start.CustomPhysicalNamingStrategy"/>
+                      value="jpabook.start.jpabook.model.CustomPhysicalNamingStrategy"/>
 
 
         </properties>
