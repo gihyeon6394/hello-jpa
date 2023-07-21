@@ -124,10 +124,10 @@ public class Member {
 ````
 <!--persistent.xml-->
 <property name="hibernate.physical_naming_strategy"
-          value="jpabook.start.jpabook.model.CustomPhysicalNamingStrategy"/>
+          value="jpabook.start.jpabook.model.practice.CustomPhysicalNamingStrategy"/>
 ````
 
-<details><summary>jpabook.model.CustomPhysicalNamingStrategy.java</summary>
+<details><summary>jpabook.model.practice.CustomPhysicalNamingStrategy.java</summary>
 
 ````java
 package jpabook.start;
@@ -136,7 +136,7 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 
-public class jpabook.model.CustomPhysicalNamingStrategy implements PhysicalNamingStrategy {
+public class jpabook.model.practice.CustomPhysicalNamingStrategy implements PhysicalNamingStrategy {
 
     @Override
     public Identifier toPhysicalCatalogName(final Identifier identifier, final JdbcEnvironment jdbcEnv) {

@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Created by holyeye on 2014. 3. 11..
  */
-@Entity
+// @Entity
 public class Category {
 
     @Id @GeneratedValue

@@ -1,30 +1,27 @@
-package jpabook.model.entity;
+package practice.entity;
 
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by holyeye on 2014. 3. 11..
- */
-
-// @Entity
+@Entity
 public class Member extends BaseEntity {
 
-    @Id @GeneratedValue
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "MEMBER_ID")
     private Long id;
 
     private String name;
 
     private String city;
+
     private String street;
+
     private String zipcode;
 
     @OneToMany(mappedBy = "member")
     private List<Order> orders = new ArrayList<Order>();
-
-    //Getter, Setter
 
     public Long getId() {
         return id;
