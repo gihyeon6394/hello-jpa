@@ -103,7 +103,7 @@ public class Main {
         delivery1.setZipcode(karina.getZipcode());
         delivery1.setStatus(DeliveryStatus.READY);
         delivery1.setOrder(order1);
-p
+
         order1.addOrderItem(orderItem1);
         order1.setDelivery(delivery1);
 

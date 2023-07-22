@@ -40,12 +40,12 @@ IdolMember karina = em.getReference(IdolMember.class, "aespa001");
 
 #### 프록시의 특징
 
-<img src="img_1.png" width="30%">
+<img src="img_1.png" width="20%">
 
 - 프록시 객체는 실제 클래스를 상속받아 만들어짐
     - 사용자는 실제인지 프록시인지 구분하지 않고 사용
 
-<img src="img_2.png" width="40%">
+<img src="img_2.png" width="50%">
 
 - 프록시는 실제 객체에 대한 참조를 보관하고 있음
 

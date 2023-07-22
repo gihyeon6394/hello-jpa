@@ -88,7 +88,7 @@ public class Photographer extends Person {
 
 ### 1.2 단일 테이블 전략, Single Table Strategy
 
-<img src="img_3.png" width="30%">
+<img src="img_3.png" width="20%">
 
 - 하나의 테이블에 모든 컬럼을 다 넣음
 - 구분 컬럼 `DTYPE`을 사용하여 타입 구분
@@ -129,7 +129,7 @@ public class Developer extends Person {
 
 ### 1.3 구현 클래스마다 테이블 전략, Table Per Class Strategy
 
-<img src="img_4.png" width="60%">
+<img src="img_4.png" width="80%">
 
 - 자식 Entity마다 테이블을 만들고 자식 테이블에 필요한 컬럼을 모두 포함
 - **비추**
