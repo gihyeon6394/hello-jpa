@@ -1,17 +1,14 @@
-package jpabook.model.entity;
+package practice.entity;
 
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by holyeye on 2014. 3. 11..
- */
+@Entity
+public class Member extends BaseEntity {
 
-// @Entity
-public class Member {
-
-    @Id @GeneratedValue
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "MEMBER_ID")
     private Long id;
 
@@ -40,13 +37,6 @@ public class Member {
         this.name = name;
     }
 
-    public Address getAddress() {
-        return address;
-    }
-
-    public void setAddress(Address address) {
-        this.address = address;
-    }
 
     public List<Order> getOrders() {
         return orders;
@@ -56,12 +46,11 @@ public class Member {
         this.orders = orders;
     }
 
-    @Override
-    public String toString() {
-        return "Member{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", address=" + address +
-                '}';
+    public Address getAddress() {
+        return address;
+    }
+
+    public void setAddress(Address address) {
+        this.address = address;
     }
 }

@@ -10,15 +10,13 @@
 	<properties>
 
 		<!-- 기본 설정 -->
-		<java.version>1.6</java.version>
+		<java.version>1.8</java.version>
 		<!-- 프로젝트 코드 인코딩 설정 -->
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
 		<!-- JPA, 하이버네이트 버전 -->
-		<hibernate.version>4.3.10.Final</hibernate.version>
-		<!-- 데이터베이스 버전 -->
-		<h2db.version>1.4.187</h2db.version>
+		<hibernate.version>5.4.13.Final</hibernate.version>
 
 	</properties>
 
@@ -30,12 +28,17 @@
 			<artifactId>hibernate-entitymanager</artifactId>
 			<version>${hibernate.version}</version>
 		</dependency>
-		<!-- H2 데이터베이스 -->
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<version>${h2db.version}</version>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>8.0.28</version>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.12.0</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -51,5 +54,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>

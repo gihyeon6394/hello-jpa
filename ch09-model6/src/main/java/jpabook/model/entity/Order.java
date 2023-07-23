@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Created by holyeye on 2014. 3. 11..
  */
-@Entity
+// @Entity
 @Table(name = "ORDERS")
 public class Order {
 

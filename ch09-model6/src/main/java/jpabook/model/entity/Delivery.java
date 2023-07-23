@@ -6,7 +6,7 @@ import javax.persistence.*;
 /**
  * Created by holyeye on 2014. 3. 11..
  */
-@Entity
+// @Entity
 public class Delivery {
 
     @Id @GeneratedValue
