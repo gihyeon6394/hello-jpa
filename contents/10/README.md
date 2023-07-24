@@ -197,6 +197,205 @@ List<Member> resultList = em.createQuery("SELECT m FROM Member m WHERE m.usernam
                               .setParameter(1, usernameParam);
 ````
 
+### 2.3 프로젝션, projection
+
+- SELECT 절에 조회할 대상을 지정하는 것
+- 프로젝션 대상 : 엔티티, 임베디드 타입, 스칼라 타입
+
+#### 엔티티 프로젝션
+
+```sql
+SELECT m
+FROM Member m;
+
+SELECT m.team
+FROM Member m;
+````
+
+#### 임베디드 타입 프로젝션
+
+- 임베디드 타입은 값 타입이므로 엔티티와 다르게 조회 결과를 영속성 컨텍스트에서 관리하지 않음
+
+```sql
+-- JPQL
+SELECT o.address
+FROM Order o;
+
+-- 실제 SQL
+SELECT o.zipcode, o.street, o.city
+FROM Orders o;
+````
+
+#### 스칼라 타입 프로젝션
+
+스칼라 타입 : 숫자, 문자, 날짜
+
+````
+List<String> resultList = em.createQuery("SELECT m.username FROM Member m", String.class)
+                              .getResultList();
+````
+
+#### 여러 값 조회
+
+- 필요한 데이터만 조회할 때
+- Query 타입으로 조회
+
+````
+List<Object[]> resultList = em.createQuery("SELECT m.username, m.age FROM Member m")
+                    .getResultList();
+````
+
+#### `new` 명령어
+
+- `Object[]` 타입 말고, DTO로 바로 조회
+
+```java
+public class UserDTO {
+    private String username;
+    private int age;
+
+    public UserDTO(String username, int age) {
+        this.username = username;
+        this.age = age;
+    }
+}
+
+public class Foo {
+    public void selectDTO(EntityManager em) {
+        List<UserDTO> resultList = em.createQuery("SELECT new jpabook.jpql.UserDTO(m.username, m.age) FROM Member m", UserDTO.class)
+                .getResultList();
+    }
+}
+````
+
+### 2.4 페이징 API
+
+- `setFirstResult(int startPosition)` : 조회 시작 위치
+- `setMaxResults(int maxResult)` : 조회할 데이터 수
+- API를 DB 방언에 맞게 변환해서 호출
+
+````
+// 11번부터 30번까지 조회 (20개)
+TypedQuery<Member> query = em.createQuery("SELECT m FROM Member m ORDER BY m.age DESC", Member.class)
+                              .setFirstResult(10)
+                              .setMaxResults(20);
+````
+
+```sql
+-- 실제 sql (오라클)
+SELECT *
+FROM (SELECT ROW_.*, ROWNUM ROWNUM_
+      FROM (SELECT M.ID AS ID1, M.AGE AS AGE2, M.TEAM_ID AS TEAM_ID3, M.NAME AS NAME4
+            FROM MEMBER M
+            ORDER BY M.AGE DESC) ROW_
+      WHERE ROWNUM <= ?)
+    )
+WHERE ROWNUM_ > ?
+```
+
+### 2.5 집합과 정렬
+
+#### `GROUP BY`, `HAVING`, `ORDER BY`
+
+sql과 동일
+
+### 2.6 JPQL 조인
+
+#### 내부 조인
+
+````
+String teamName = "Aespa";
+String query  = "SELECT m FROM Member m INNER JOIN m.team t WHERE t.name = :teamName";
+List<Member> resultList = em.createQuery(query, Member.class)
+                              .setParameter("teamName", teamName)
+                              .getResultList();
+````
+
+````sql
+-- JPQL
+SELECT m
+FROM Member m
+         INNER JOIN m.team t -- Entity 연관관계를 활용함
+WHERE t.name = :teamName;
+
+-- 실제 SQL
+SELECT M.ID AS ID, M.AGE AS AGE, M.TEAM_ID AS TEAM_ID, M.NAME AS NAME
+FROM MEMBER M
+         INNER JOIN TEAM T ON M.TEAM_ID = T.ID
+WHERE T.NAME = ?
+````
+
+#### 외부 조인
+
+```sql
+-- JPQL
+SELECT m
+FROM Member m
+         LEFT JOIN m.team t
+WHERE t.name = :teamName;
+
+-- 실제 SQL
+SELECT M.ID AS ID, M.AGE AS AGE, M.TEAM_ID AS TEAM_ID, M.NAME AS NAME
+FROM MEMBER M
+         LEFT OUTER JOIN TEAM T ON M.TEAM_ID = T.ID
+WHERE T.NAME = ?
+````
+
+#### 컬렉션 조인
+
+1:N, N:M 같은 컬렉션을 조인할 때 사용
+
+```sql
+-- JPQL
+SELECT t, m
+FROM Team t
+         LEFT JOIN t.members m;
+
+-- 실제 SQL
+SELECT T.ID AS ID, T.NAME AS NAME, M.ID AS ID1, M.AGE AS AGE, M.TEAM_ID AS TEAM_ID, M.NAME AS NAME1
+FROM TEAM T
+         LEFT OUTER JOIN MEMBER M ON T.ID = M.TEAM_ID
+```
+
+#### 세타 조인
+
+- 내부 조인만 지원
+- 전혀 관계 없는 엔티티를 조인할 때 사용
+
+```sql
+-- JPQL
+SELECT COUNT(m)
+FROM Member m,
+     Team t
+WHERE m.username = t.name;
+
+-- 실제 SQL
+SELECT COUNT(M.ID)
+FROM MEMBER M,
+     TEAM T
+WHERE M.USERNAME = T.NAME
+```
+
+#### JOIN ON 절 (JPA 2.1부터 지원)
+
+- 내부 JOIN의 `ON` 절은 `WHERE` 절과 같음
+- 외부 JOIN 시 주로 사용
+    - 조인 대상을 필터링하고 조인
+
+```sql
+-- JPQL
+select m, t
+from Member m
+         left join m.team t on t.name = 'Aespa';
+
+-- 실제 SQL
+SELECT M.ID AS ID, M.AGE AS AGE, M.TEAM_ID AS TEAM_ID, M.NAME AS NAME, T.ID AS ID1, T.NAME AS NAME1
+FROM MEMBER M
+         LEFT OUTER JOIN TEAM T ON T.NAME = 'Aespa';
+```
+
+### 2.7 페치 조인
+
 ## 3. Criteria
 
 ## 4. QueryDSL
