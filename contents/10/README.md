@@ -394,7 +394,134 @@ FROM MEMBER M
          LEFT OUTER JOIN TEAM T ON T.NAME = 'Aespa';
 ```
 
-### 2.7 페치 조인
+### 2.7 페치 조인, FETCH JOIN
+
+- 연관된 Entity나 Collection을 SQL 한 번에 함께 조회하는 기능
+- 별칭 사용 불가
+    - hibernate는 가능
+
+````
+fetch jokin ::== [LEFT [OUTER] | INNER] JOIN FETCH 조인경로
+````
+
+#### Entity FETCH JOIN
+
+- 지연 로딩을 설정해도 `fetch join`에는 즉시 로딩함
+
+```sql
+-- JPQL
+SELECT m
+FROM Member m
+         JOIN FETCH m.team;
+
+-- 실제 SQL
+-- 지연 로딩 없음
+SELECT M.*, T.*
+FROM MEMBER M
+         INNER JOIN TEAM T ON M.TEAM_ID = T.ID;
+```
+
+````
+String jpql = "SELECT m FROM Member m JOIN FETCH m.team";
+List<Member> members = em.createQuery(jpql, Member.class).getResultList();
+````
+
+#### Collection FETCH JOIN
+
+1:N 관계
+
+```sql
+-- JPQL
+select t
+from Team t
+         join fetch t.members
+where t.name = 'Aespa';
+
+-- 실제 SQL
+SELECT T.*, M.*
+FROM TEAM T
+         INNER JOIN MEMBER M ON T.ID = M.TEAM_ID
+WHERE T.NAME = 'Aespa';
+```
+
+````
+String jpql = "SELECT t FROM Team t JOIN FETCH t.members WHERE t.name = 'Aespa'";
+List<Team> teams = em.createQuery(jpql, Team.class).getResultList(); 
+System.out.println("teams.size() = " + teams.size()); // teams.size() = [member 수] 
+````
+
+#### fetch join 과 DISTINCT
+
+- JPQL의 `DISTINCT`는 SQL에 `DISTINCT`를 추가 + app 단에서 중복 제거
+- 실제 SQL은 중복제거를 해도 조회하려는 객체의 중복 제거가 안됨
+- select 결과를 한번더 app 단에서 중복 제거를 한번 더 함
+
+```sql
+-- JPQL
+SELECT DISTINCT t
+FROM Team t
+         JOIN FETCH t.members
+WHERE t.name = 'Aespa';
+
+-- 실제 SQL
+SELECT DISTINCT t.*, m.*
+FROM TEAM T
+         INNER JOIN MEMBER M ON T.ID = M.TEAM_ID
+WHERE T.NAME = 'Aespa';
+```
+
+#### fetch join과 일반 join의 차이
+
+- **일반 join은 연관관계 객체를 조회하지 않음**
+    - 지연 로딩 설정 시 : 프록시 반환
+    - 즉시 로딩 설정 시 : **연관 객체 SELECT 쿼리를 한번 더 실행**
+
+```sql
+-- JPQL : 일반 join
+SELECT t
+FROM Team t
+         JOIN t.members m
+WHERE t.name = 'Aespa';
+
+-- 실제 SQL : 일반 join
+SELECT T.* -- Entity만
+FROM TEAM T
+         INNER JOIN MEMBER M ON T.ID = M.TEAM_ID
+WHERE T.NAME = 'Aespa';
+
+
+-- JPQL : fetch join
+SELECT t
+FROM Team t
+         JOIN FETCH t.members m
+WHERE t.name = 'Aespa';
+
+-- 실제 SQL : fetch join
+SELECT T.*, M.* -- Entity + 연관관계 객체
+FROM TEAM T
+         INNER JOIN MEMBER M ON T.ID = M.TEAM_ID
+WHERE T.NAME = 'Aespa';
+```
+
+#### fetch join의 특징과 한계
+
+- sql 호출 회수 최적화 : sql 한번으로 연관 객체 조회
+- global loading 전략보다 우선하여 사용됨
+    - global loading 전략 : Entity에 직접 적용한 fetch 전략 e.g. `@OneToMany(fetch = FetchType.LAZY)`
+    - **gloabl loading 전략은 지연 로딩하고, 필요할 때만 fetch join으로 즉시 로딩**
+- 준영속 상태에서도 객체 그래프 탐색 가능
+- fetch join 대상에 별칭 불가능
+    - hibernate는 지원하지만, 무결성이 꺠질 수 있어 주의해서 사용
+- 2개 이상의 컬렉션 fetch 불가
+    - 구현체에 따라 지원하지만, 카테시안 곱이 발생할 수 있음
+    - hibernate에선 `javax.persistence.PersistenceException` 발생
+- 컬렉션 페치 조인 시 페이징 불가, `setFirstResult`, `setMaxResults`
+    - 1:1, N:1은 페이징 가능
+    - 컬렉션 페치 조인 시, 일대다 조인이 발생하므로 데이터가 예측할 수 없이 증가
+        - hibernate는 메모리에서 페이징 처리를 하고, 경고 로깅을 남김 (성능 저하)
+- **결론**
+    - **fetch join은 객체그래프를 유지하면서 조회할 수 있어 편함**
+    - **Entity가 가진 모양과 많이 다른 결과를 조회하고 싶다면 여러번 조회해서 DTO로 변환하여 반환하는 것이 효과적**
 
 ## 3. Criteria
 
