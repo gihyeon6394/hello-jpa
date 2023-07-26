@@ -1054,6 +1054,125 @@ cq.where(predicate);
 cq.orderBy(cb.desc(m.get("age")));
 ````
 
+### 3.2 Criteria 쿼리 생성
+
+`CriteriaBuilder.createQuery()`를 통해 CriteriaQuery 생성
+
+````
+CriteriaBuilder cb = em.getCriteriaBuilder();
+
+//Member로 반환 타입 지정
+CriteriaQuery<Member> cq = cb.createQuery(Member.class);
+
+...
+
+List<Member> members = em.createQuery(cq).getResultList();
+````
+
+### 3.3 조회
+
+#### 조회 대상 한건, 여러건 지정
+
+````
+cq.select(m); // JPQL : select m
+
+cq.multiselect(m.get("username"), m.get("age")); // JPQL : select m.username, m.age
+cq.select(cb.array(m.get("username"), m.get("age"))); // JPQL : select m.username, m.age
+````
+
+#### DISTINCT
+
+````
+CriteraQeury<Object[]> cq = cb.createQuery(Object[].class);
+Root<Member> m = cq.from(Member.class);
+cq.multiselect(m.get("username"), m.get("age")).distinct(true);
+
+TypedQuery<Object[]> query = em.createQuery(cq);
+List<Object[]> resultList = query.getResultList();
+````
+
+#### NEW, construct()
+
+````
+CriteriaQuery<MemberDTO> cq = cb.createQuery(MemberDTO.class);
+Root<Member> m = cq.from(Member.class);
+cq.select(cb.construct(MemberDTO.class, m.get("username"), m.get("age")));
+
+TypedQuery<MemberDTO> query = em.createQuery(cq);
+List<MemberDTO> resultList = query.getResultList();
+````
+
+#### Tuple
+
+- Map과 비슷
+- 미리 선언한 별칭으로 값을 꺼낼 수 있음
+
+````
+// JPQL : select m.username, m.age from Member m
+
+CreteriaBuilder cb = em.getCriteriaBuilder();
+CriteriaQuery<Tuple> cq = cb.createTupleQuery();
+
+Root<Member> m = cq.from(Member.class);
+cq.multiselect(m.get("username").alias("username"), m.get("age").alias("age"));
+
+TypedQuery<Tuple> query = em.createQuery(cq);
+List<Tuple> resultList = query.getResultList();
+
+for (Tuple tuple : resultList) {
+    System.out.println("username = " + tuple.get("username", String.class));
+    System.out.println("age = " + tuple.get("age", Integer.class));
+}
+````
+
+### 3.4 집합
+
+#### GROUP BY
+
+````
+CriteriaQuery<Object[]> cq = cb.createQuery(Object[].class);
+Root<Member> m = cq.from(Member.class);
+
+Expression maxAge = cb.max(m<Integer>get("age"));
+Expression minAge = cb.min(m<Integer>get("age"));
+
+cq.multiselect(m.get("team").get("name"), maxAge, minAge);
+cq.groupBy(m.get("team").get("name"));
+
+TypedQuery<Object[]> query = em.createQuery(cq);
+List<Object[]> resultList = query.getResultList();
+````
+
+#### HAVING
+
+````
+cq.multiselect(m.get("team").get("name"), maxAge, minAge)
+  .gropuBy(m.get("team").get("name"))
+    .having(cb.gt(maxAge, 10));
+````
+
+### 3.5 정렬
+
+````
+cq.select(m)
+  .where(predicate)
+    .orderBy(cb.desc(m.get("age")));
+````
+
+### 3.6 조인
+
+```
+Root<Member> m = cq.from(Member.class);
+Join<Member, Team> t = m.join("team", JoinType.INNER);
+
+cq.multiselect(m, t)
+  .where(cb.equal(t.get("name"), "Aespa"));
+```
+
+- `JoinType.INNER`, `JoinType.LEFT`, `JoinType.RIGHT`
+- fetch join :  `join()` 대신 `fetchJoin()`을 사용
+    - `m.fetchJoin("team", JoinType.LEFT);`
+
 ## 4. QueryDSL
 
 ## 5. 네이티브 SQL
