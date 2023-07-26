@@ -998,6 +998,62 @@ public class Foo {
 
 ## 3. Criteria
 
+- JPQL을 편하게 작성할 수 있는 builder API
+- 코드로 JPQL 작성 가능
+    - compile-time에 sql 오류 잡을 수 있음
+    - 코드가 복잡해지고 가독성이 떨어짐
+
+### 3.1 Criteria 기본 API
+
+`javax.persistence.criteria` 패키지
+
+````
+// 1. CriteriaBuilder 얻기
+CriteriaBuilder cb = em.getCriteriaBuilder();
+
+// 2. CriteriaQuery 생성, 반환타입 지정
+CriteriaQuery<Member> query = cb.createQuery(Member.class);
+
+// 3. FROM 절 생성, 쿼리 루트
+Root<Member> m = query.from(Member.class);
+// 4. SELECT 절 생성
+query.select(m);
+
+TypedQuery<Member> typedQuery = em.createQuery(query);
+List<Member> members = typedQuery.getResultList();
+````
+
+````
+CreteriaBuilder cb = em.getCriteriaBuilder();
+CriteriaQuery<Member> query = cb.createQuery(Member.class);
+Root<Member> m = query.from(Member.class);
+
+// 1. 검색 조건 지정
+Predicate predicate = cb.equal(m.get("username"), "Aespa");
+
+// 2. 정렬 조건 지정
+javax.persistence.criteria.Order order = cb.desc(m.get("age"));
+
+// 3. 쿼리 생성
+query.select(m)
+        .where(predicate)
+        .orderBy(order);
+        
+// 4. 쿼리 실행
+List<Member> members = em.createQuery(query).getResultList();
+````
+
+````
+
+Root<Member> m = query.from(Member.class);
+
+Predicate predicate = cb.greaterThan(m.<Integer>get("age"), 10);
+
+cq.select(m);
+cq.where(predicate);
+cq.orderBy(cb.desc(m.get("age")));
+````
+
 ## 4. QueryDSL
 
 ## 5. 네이티브 SQL
