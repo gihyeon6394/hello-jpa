@@ -523,6 +523,479 @@ WHERE T.NAME = 'Aespa';
     - **fetch join은 객체그래프를 유지하면서 조회할 수 있어 편함**
     - **Entity가 가진 모양과 많이 다른 결과를 조회하고 싶다면 여러번 조회해서 DTO로 변환하여 반환하는 것이 효과적**
 
+### 2.8 경로 표현식, path expression
+
+`.`을 찍어 객체 그래프를 탐색하는 것
+
+```sql
+select m.username -- 상태 필드
+from Member m
+         join m.team t -- 연관 필드 (단일 값 연관 필드)
+         join t.orders o -- 연관 필드 (컬렉션 값 연관 필드)
+where m.team.name = 'Aespa';
+```
+
+```java
+
+@Entity
+public class Member {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @Column(name = "USERNAME")
+    private String username; // 상태 필드
+
+    @ManyToOne
+    @JoinColumn(name = "TEAM_ID")
+    private Team team; // 연관 필드 (단일 값 연관 필드)
+
+    @OneToMany(mappedBy = "member")
+    private List<Order> orders = new ArrayList<>(); // 연관 필드 (컬렉션 값 연관 필드)
+
+    //...
+}
+```
+
+#### 경로 표현식의 용어 정리
+
+- 상태 필드, state field : 단순히 값을 저장하기 위한 필드
+- 연관 필드, association field : 연관관계를 위한 필드, 임베디드 타입 포함
+    - 단일 값 연관 필드 : `@ManyToOne`, `@OneToOne`, 대상이 엔티티
+    - 컬렉션 값 연관 필드 : `@OneToMany`, `@ManyToMany`, 대상이 컬렉션
+
+#### 경로 표현식과 특징
+
+- 상태 필드 경로 : 탐색의 끝, 더 이상 탐색 불가
+- 단일 값 연관 경로 : 묵시적 내부 조인 발생, 계속 탐색 가능
+- 컬렉션 값 연관 경로 : 묵시적 내부 조인 발생, 더 이상 탐색 불가
+    - 단, `FROM` 절에서 별칭을 얻으면 별칭으로 탐색 가능
+- 묵시적 조인 : 단일 값 연관 필드로 경로탐색 시 묵시적으로 SQL `INNER JOIN`
+    - `SELECT m.team FROM Member m` : 묵시적 조인 발생
+
+```sql
+-- JPQL : 상태 필드 경로 탐색
+SELECT m.username, m.age
+FROM Member m;
+
+-- 실제 SQL : 상태 필드 경로 탐색
+SELECT M.USERNAME, M.AGE
+FROM MEMBER M;
+
+-- JPQL : 단일 값 연관 경로 탐색
+SELECT o.member
+FROM Order o;
+
+-- 실제 SQL : 단일 값 연관 경로 탐색
+SELECT M.*
+FROM ORDERS O
+         INNER JOIN MEMBER M ON O.MEMBER_ID = M.ID;
+
+-- JPQL : 묵시적 조인을 이용한 경로 탐색
+SELECT t.*
+FROM Order o
+WHERE o.product.name = 'NEXT_LEVEL'
+  AND o.address.city = 'Seoul';
+
+-- 실제 SQL : 묵시적 조인을 이용한 경로 탐색
+SELECT T.*
+FROM Orders O
+         INNER JOIN MEMBER M ON O.MEMBER_ID = M.ID -- 묵시적 조인 (1)
+         INNER JOIN TEAM T ON M.TEAM_ID = T.ID -- 묵시적 조인 (2)
+         INNER JOIN PRODUCT P ON O.PRODUCT_ID = P.ID -- 묵시적 조인 (3)
+WHERE P.PRODUCT_NAME = 'NEXT_LEVEL'
+  AND O.CITY = 'Seoul';
+
+-- JPQL : 컬렉션 값 연관 경로 탐색 (실패)
+SELECT t.members.username
+FROM Team t;
+
+-- JPQL : 컬렉션 값 연관 경로 탐색 (성공)
+SELECT m.username
+FROM Team t
+         JOIN t.members m -- 별칭 m을 얻어 m으로부터 경로 탐색 가능
+;
+
+-- JPQL : 컬렉션 사이즈 구하기
+SELECT t.members.size
+FROM Team t;
+```
+
+#### 경로 탐색을 사용한 묵시적 조인 시 주의사항
+
+- 항상 `INNER JOIN `
+- 컬렉션은 경로탐색의 마지막, 추가 탐색하려면 `JOIN`문으로 별칭을 얻어야함
+- 경로 탐색은 주로 SELECT, WHERE 절에서 사용하지만, 묵시적 조인으로 인해 SQL의 FROM 절에 영향을 줌
+- 묵시적 JOIN 보다는 명시적 JOIN을 추천 (성능)
+
+### 2.9 서브 쿼리
+
+`WHERE`, `HAVING` 절에서 사용 가능 (hibernate HQL은 `SELECT` 절까지 가능)
+
+```sql
+-- JPQL : 서브 쿼리 WHERE 절
+SELECT m
+FROM Member m
+WHERE m.age > (SELECT AVG(m2.age) FROM Member m2);
+
+````
+
+#### 서브 쿼리 함수
+
+```sql
+-- [NOT] EXISTS (subquery) : 서브 쿼리에 결과가 존재하면 참
+select m
+from Member m
+where exists(select t from m.team t where t.name = 'Aespa');
+
+-- {ALL | ANY | SOME} (subquery) : 조건식을 만족하는지 비교
+select m
+from Member m
+where m.team = ANY (select t from Team t);
+
+-- [NOT] IN (subquery) : 서브 쿼리의 결과 중 하나라도 같은 것이 있으면 참
+select t
+from Team t
+where t in (select t2
+            from Team t2
+                     join t2.members m2
+            where m2.age > 10);
+````
+
+### 2.10 조건식
+
+#### 타입 표현
+
+| 종류      | 설명                                                                                         | 예시                                                               |
+|---------|--------------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| 문자      | 작은따옴표로 감쌈<br/> '로 escape                                                                   | 'HELLO', 'She''s'                                                |
+| 숫자      | L, D, F로 타입 지정                                                                             | 10, 10L, 10D                                                     |
+| 날짜      | DATE {d 'yyyy-mm-dd'}<br/> TIME {t 'hh:mm:ss'}<br/> TIMESTAMP {ts 'yyyy-mm-dd hh:mm:ss.f'} | {d '2021-10-10'}<br/>m.createDate > {ts '2021-10-10 10:10:10.0'} |
+| Boolean | TRUE, FALSE                                                                                | TRUE, FALSE                                                      |
+
+#### 연산자 우선순위
+
+1. 경로 탐색 연산 `.` (ex. `m.username`)
+2. 수학 연산 : `*`, `/`, `%`
+3. 비교 연산 : `=`, `>`, `<`, `>=`, `<=`, `<>`, `IS`, `LIKE`, `BETWEEN`, `IN`
+4. 논리 연산 : `NOT`, `AND`, `OR`
+
+#### 논리 연산과 비교식
+
+- 논리 연산
+    - `AND` : 둘다 만족하면 참
+    - `OR` : 둘 중 하나만 만족해도 참
+    - `NOT` : 논리값의 반대
+- 비교식 : `=`, `>`, `<`, `>=`, `<=`, `<>`
+
+#### `BETWEEN`, `IN`, `LIKE`, NULL 비교
+
+- `BETWEEN` : `X [NOT] BETWEEN A AND B`
+- `IN` : `X [NOT] IN (A, B, C)`
+- `LIKE` : `X [NOT] LIKE 패턴값 [ESCAPE]`
+- `NULL` 비교 : `IS [NOT] NULL`
+
+#### 컬렉션 식
+
+- **컬렉션에는 컬렉션 식 외에 다른 조건식 사용 불가**
+- `IS [NOT] EMPTY` : 컬렉션이 비어있는지 검사
+- `[NOT] MEMBER [OF]` : 컬렉션에 값이 포함되어 있는지 검사
+
+```sql
+-- JPQL
+select t
+from Team t
+where t.members IS NOT EMPTY;
+
+-- 실제 SQL
+SELECT T.*
+FROM TEAM T
+WHERE EXISTS(SELECT 1
+             FROM MEMBER M
+             WHERE M.TEAM_ID = T.ID);
+
+--JPQL : 컬렉션에 컬렉션 식 외의 조건식 사용 (실패)
+select t
+from Team t
+where t.members is null;
+
+-- JPQL
+select t
+from Team t
+where :memberParam MEMBER OF t.members;
+```
+
+#### 스칼라 식
+
+| 함수                                                             | 설명                                                                                       | 예시                          |
+|----------------------------------------------------------------|------------------------------------------------------------------------------------------|-----------------------------|
+| +, -, *, /                                                     | 사칙 연산                                                                                    | age + 10                    |
+| CONCAT(문자1, 문자2, ...)                                          | 문자 연결                                                                                    | CONCAT('a', 'b')            |
+| SUBSTRING(문자, 위치 [길이])                                         | 문자열 자르기                                                                                  | SUBSTRING(m.username, 2, 3) |
+| TRIM([[LEADING &#124; TRAILING &#124; BOTH] [제거할 문자] FROM] 문자) | 문자열 공백 제거                                                                                | TRIM('  a  ')               |
+| LOWER(문자), UPPER(문자)                                           | 소문자, 대문자로 변경                                                                             | LOWER(m.username)           |
+| LENGTH(문자)                                                     | 문자 길이                                                                                    | LENGTH(m.username)          |
+| LOCATE(찾을 문자, 원본 문자, [시작위치])                                   | 문자 위치 찾기                                                                                 | LOCATE('arin', m.username)  |
+| ABS, SQRT, MOD, SIZE, INDEX                                    | 수학 함수 <br/> ABS : 절대값<br/>SQRT : 제곱근<br/>MOD : 나머지<br/>SIZE : 컬렉션 크기<br/>INDEX : 컬렉션 인덱스 | ABS(m.age), SIZE(t.members) |
+| CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP                  | 데이터베이스 시스템의 현재 날짜, 시간, 타임스탬프                                                             | CURRENT_DATE                |
+
+#### CASE 식
+
+- 기본 CASE : `CASE {WHEN <조건식> THEN <스칼라식>} + ELSE <스칼라식> END`
+- 단순 CASE : `CASE <대상> {WHEN <스칼라식1> THEN <스칼라식2>} + ELSE <스칼라식3> END`
+- `COALESCE` : 하나씩 조회해서 null이 아니면 반환
+- `NULLIF` : 두 값이 같으면 null 반환, 다르면 첫번째 값 반환
+
+```sql
+-- JPQL : 기본 CASE
+select case
+           when m.username = '카리나' then '최애'
+           when m.username = '하니' then '최애 두번쨰'
+           else '최애 아님'
+           end
+from Member m;
+
+-- JPQL : 단순 CASE
+select case m.username
+           when '카리나' then '최애'
+           when '하니' then '최애 두번쨰'
+           else '최애 아님'
+           end
+from Member m;
+
+-- JPQL : COALESCE
+-- username이 null이면 '이름 없는 회원' 반환
+select coalesce(m.username, '이름 없는 회원')
+from Member m;
+
+-- JPQL : NULLIF
+-- username이 '이름 없는 회원'이면 null 반환
+select nullif(m.username, '이름 없는 회원')
+from Member m;
+```
+
+### 2.11 다형성 쿼리
+
+JPQL로 부모 Entity 조회시 자식 Entity도 함께 조회됨
+
+```java
+
+@Entity
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "DTYPE")
+public abstract class Person {
+    //...
+}
+
+@Entity
+@DiscriminatorValue("I")
+public class Idol extends Person {
+    //...
+}
+
+@Entity
+@DiscriminatorValue("D")
+public class Developer extends Person {
+    //...
+}
+```
+
+````
+List<Person> result = em.createQuery("select p from Person p", Person.class)
+                        .getResultList(); // Idol, Developer 모두 조회됨
+````
+
+```sql
+-- JPQL
+select p
+from Person p
+
+
+-- 실제 SQL : InheritanceType.SINGLE_TABLE
+select p.*
+from Person p;
+
+-- 실제 SQL : InheritanceType.JOINED
+select p.*, i.*, d.*
+from Person p
+         left outer join Idol i on p.id = i.id
+         left outer join Developer d on p.id = d.id;
+```
+
+#### TYPE
+
+Entity 상속 구조에서 조회 대상을 특정 자식 타입으로 한정할 떄
+
+```sql
+-- JPQL
+select p
+from Person p
+where type(p) in (Idol, Developer);
+
+-- 실제 SQL
+select p.*
+from Person p
+where p.DTYPE in ('I', 'D');
+``` 
+
+#### TREAT(JPA 2.1)
+
+- 상속 구조에서 부모 타입을 특정 자식 타입으로 다룰 때 사용
+- JPA는 `FROM`, `WHERE`, hibernate는 `SELECT`에서 사용 가능
+
+```sql
+-- JPQL
+select p
+from Person p
+where treat(p as Idol).groupName = 'Aespa';
+
+-- 실제 SQL
+select p.*
+from person p
+where p.DTYPE = 'I'
+  and p.groupName = 'Aespa';
+```
+
+### 2.12 사용자 정의 함수 호출 (JPA 2.1)
+
+- JPQL에서 사용자 정의 함수 호출 가능
+- `function_invocation::== FUNCTION(function_name {, function_arg}*)`
+
+```java
+public class MySqlDialectCustom extends MySQL5Dialect {
+    public MySqlDialectCustom() {
+        super();
+        registerFunction("group_concat", new StandardSQLFunction("group_concat", StandardBasicTypes.STRING));
+    }
+}
+```
+
+````
+<!-- persistence.xml -->
+<property name="hibernate.dialect" value="com.example.demo.MySqlDialectCustom"/>
+````
+
+```sql
+-- jpql
+select group_concat(m.username)
+from Member m;
+````
+
+### 2.13 기타 정리
+
+- enum은 `=` 비교연산자만 지원
+- 임베디드 타입은 비교 지원 안함
+- EMPTY STRING
+    - JPA : 길이가 0인 문자열을 Empty String으로 정의
+    - DBMS : 길이가 0인 문자열을 NULL로 정의하기도 함
+- NULL
+    - 조건을 만족하는 값이 하나도 없으면 NULL 이다.
+    - NULl은 알 수 없는 값이다.
+    - NULL == NULL 은 알 수 없는 값이다.
+    - NULL is NULL 은 참이다.
+
+### 2.14 Entity 직접 사용
+
+#### 기본 키 값
+
+JPQL에서 엔터티를 직접 사용시 자동으로 Entity의 기본 키 값을 사용
+
+```sql
+-- JPQL : 기본 키 값 사용
+select count(m.id)
+from Member m;
+
+-- JQPL : Entity 직접 사용
+select count(m)
+from Member m;
+
+-- 실제 SQL
+-- 둘다 똑같음
+select count(m.id)
+from Member m;
+
+-- JPQl
+select m
+from Member m
+where m = :member;
+
+-- 실제 SQL
+select m.*
+from Member m
+where m.id = ?;
+```
+
+#### 외래 키 값
+
+```sql
+-- JPQL
+select m
+from Member m
+where m.team = :team;
+
+-- 실제 SQL
+select m.*
+from Member m
+where m.team_id = ?;
+```
+
+### 2.15 Named 쿼리 : 정적 쿼리
+
+- 동적 쿼리 : JPQL을 직접 문자열로 작성
+    - runtime에 쿼리가 완성됨
+    - e.g. `em.createQuery("select m from Member m where m.username = :username", Member.class);`
+- 정적 쿼리 : 미리 정의한 쿼리
+    - app 로딩 시점에 JPQL 문법 체크 후 parsing
+    - 오류 체크
+    - 성능 최적화 : 미리 parsing된 쿼리 재사용, DBMS 조회 성능 최적화
+    - `@NamedQuery`, xml 에 등록
+
+#### Named 쿼리를 어노테이션에 정의
+
+```java
+
+@Entity
+@NamedQuery(
+        name = "Member.findByTeamId",
+        query = "select m from Member m where m.teamId = :teamId"
+)
+public class Member {
+    //...
+}
+
+public class Foo {
+    public void fooSelect() {
+        List<Member> memberAespa = em.createNamedQuery("Member.findByTeamId", Member.class)
+                .setParameter("teamId", "Aespa001")
+                .getResultList();
+    }
+}
+```
+
+#### Named 쿼리를 XML에 정의
+
+- named query는 xml이 더 편리함
+- xml에 정의된 named query는 어노테이션에 정의된 named query를 오버라이딩 함
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<named-query name="Member.findByTeamId">
+    <query>
+        select m
+        from Member m
+        <CDATA[
+        where m.teamId = :teamId
+        ]]>
+    </query>
+</named-query>
+
+        <!--persistance.xml-->
+<persistence-unit name="jpabook">
+<mapping-file>META-INF/orm.xml</mapping-file>
+</persistence-unit>
+```
+
 ## 3. Criteria
 
 ## 4. QueryDSL
