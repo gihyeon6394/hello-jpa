@@ -1173,6 +1173,165 @@ cq.multiselect(m, t)
 - fetch join :  `join()` 대신 `fetchJoin()`을 사용
     - `m.fetchJoin("team", JoinType.LEFT);`
 
+### 3.7 서브쿼리
+
+#### 간단한 서브 쿼리
+
+````
+/* JPQL : select m 
+      from Member m 
+      where m.age > (select avg(m2.age) from Member m2) */
+
+CriteriaBuilder cb = em.getCriteriaBuilder();
+CriteraQuery<Member> mainQuery = cq.subquery(Member.class);
+
+Subquery<Double> subQuery = mainQuery.subquery(Double.class);
+Root<Member> m2 = subQuery.from(Member.class);
+
+Root<Member> m = mainQuery.from(Member.class);
+mainQuery.select(m)
+  .where(cb.gt(m.get("age"), subQuery));
+  
+````
+
+#### 상호 관련 서브 쿼리
+
+````
+/* JPQL : select m 
+      from Member m 
+      where exist (select t from m.team t where t.name = 'Aespa') */
+      
+CriteriaBuilder cb = em.getCriteriaBuilder();`
+CriteriaQuery<Member> cq = cb.createQuery(Member.class);
+
+Root<Member> m = cq.from(Member.class);
+
+Subquery<Team> subQuery = cq.subquery(Team.class);
+Root<Member> subM = subQuery.from(Member.class);
+
+Join<Member, Team> t = subM.join("team");
+subQuery.select(t)
+  .where(cb.equal(t.get("name"), "Aespa"));
+
+List<Member> members = em.createQuery(cq).getResultList();
+````
+
+### 3.8 IN 식
+
+````
+/* JPQL : select m 
+      from Member m 
+      where m.age in (10, 20) */
+  
+CriteriaBuilder cb = em.getCriteriaBuilder();
+CriteriaQuery<Member> cq = cb.createQuery(Member.class);
+Root<Member> m = cq.from(Member.class);
+
+cq.select(m)
+  .where(m.get("age").in(10, 20));
+````
+
+### 3.9 CASE 식
+
+````
+/* JPQL :select case
+           when m.username = '카리나' then '최애'
+           when m.username = '하니' then '최애 두번쨰'
+           else '최애 아님'
+           end
+        from Member m; */
+
+Root<Member> m = cq.from(Member.class);
+cq.multiselect(m.get("username"), 
+  cb.selectCase()
+    .when(cb.equal(m.get("username"), "카리나"), "최애")
+    .when(cb.equal(m.get("username"), "하니"), "최애 두번째")
+    .otherwise("최애 아님"));
+````
+
+### 3.10 파라미터 정의
+
+````
+
+CriteriaBuilder cb = em.getCriteriaBuilder();
+CriteriaQuery<Member> cq = cb.createQuery(Member.class);
+
+Root<Member> m = cq.from(Member.class);
+
+cq.select(m)
+  .where(cb.equal(m.get("username"), cb.parameter(String.class, "username")));
+
+List<Member> members = em.createQuery(cq)
+  .setParameter("username", "카리나") // 파라미터 바인딩
+  .getResultList();
+````
+
+### 3.11 네이티브 함수 호출
+
+````
+Root<Member> m = cq.from(Member.class);
+Expression<Long> function = cb.function("SUM", Long.class, m.get("age"));
+cq.select(function);
+````
+
+### 3.12 동적 쿼리
+
+- JPQL 동적 쿼리는 String을 직접 조합해야 하기 때문에 실수할 가능성이 높음
+
+````
+// Where 절 검색 조건
+Integer age = 10;
+String username = "카리나";
+String teamname = null;
+
+CriteriaBuilder cb = em.getCriteriaBuilder();
+CriteriaQuery<Member> cq = cb.createQuery(Member.class);
+
+Root<Member> m = cq.from(Member.class);
+Join<Member, Team> t = m.join("team", JoinType.INNER);
+
+List<Predicate> criteria = new ArrayList<>();
+
+if(age != null)
+  criteria.add(cb.equal(m.get("age"), age));
+
+if(username != null)
+    criteria.add(cb.equal(m.get("username"), username));
+  
+if(teamname != null)
+    criteria.add(cb.equal(t.get("name"), teamname));
+    
+cq.where(cb.and(criteria.toArray(new Predicate[0)])));
+
+TypedQuery<Member> query = em.createQuery(cq);
+
+if(age != null)
+  query.setParameter("age", age);
+  
+if(username != null)
+  query.setParameter("username", username);
+
+if(teamname != null)
+  query.setParameter("teamname", teamname);
+
+List<Member> members = query.getResultList();
+````
+
+### 3.13 함수 정리
+
+[java docs CriteriaBuilder interface 참고](https://docs.oracle.com/javaee/7/api/javax/persistence/criteria/CriteriaBuilder.html)
+
+### 3.14 Criteria 메타 모델 API
+
+- 문자가 아닌 코드로 JPA 메타 모델을 만들어 사용하는 방법
+- 코드 자동 생성기가 자동으로 [Entity명]_.java 파일을 생성해줌
+
+#### 코드 생성기 설정
+
+- `hibernate-jpamodelgen` 라이브러리 추가
+
+````
+
 ## 4. QueryDSL
 
 ## 5. 네이티브 SQL
