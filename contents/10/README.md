@@ -1614,6 +1614,284 @@ query.from(member)
 
 ## 5. 네이티브 SQL
 
+- JPA는 SQL을 추상화한 JPQL을 제공
+- 특정 DBMS에 의존하는 기능 미제공
+    - 문법, SQL 힌트, stored procedure, UNION 등
+- **Native SQL을 사용하면 Entity 사용 가능, 영속성 컨텍스트 관리** (JDBC API와의 차이점)
+
+#### 데이터베이스에 의존하는 기능 사용법
+
+- 특정 DBMS에서만 사용하는 함수
+    - JPQL의 네이티브 SQL 함수 호출 사용
+    - hibernate의 방언에 각 DBMS에 맞는 함수가 등록되어있음
+- SQL 힌트
+    - hibernate를 포함한 몇 구현체들이 지원
+- 인라인 뷰, UNION, INTERSECT
+    - hibernate 미지원
+- stored procedure
+    - JPQL에서 호출 가능
+- 특정 DBMS에만 있는 문버
+    - native sql로 작성
+
+### 5.1 네이티브 SQL 사용
+
+````
+// 결과 타입 정의
+public Query createNativeQuery(String sqlString, Class resultClass);
+
+// 결과 타입 미정의
+public Query createNativeQuery(String sqlString);
+
+// 결과 매핑 사용
+public Query createNativeQuery(String sqlString, String resultSetMapping);
+````
+
+#### Entity 조회
+
+````
+String sql = "SELECT ID, AGE, NAME, TEAM_ID FROM MEMBER WHERE NAME = ?";
+
+Query nativeQuery = em.createNativeQuery(sql, Member.class)
+                       .setParameter(1, "카리나");
+                       
+List<Member> result = nativeQuery.getResultList();
+````
+
+#### 값 조회
+
+단순히 값으로 조회되어 영속성 컨텍스트에 관리되지 않음
+
+````
+String sql = "SELECT ID, AGE, NAME, TEAM_ID FROM MEMBER WHERE NAME = ?";
+
+Query nativeQuery = em.createNativeQuery(sql)
+                       .setParameter(1, "카리나");
+
+List<Object[]> result = nativeQuery.getResultList();
+````
+
+#### 결과 매핑 사용
+
+- Entity와 스칼라 값을 조합하는 등 결과가 복잡해지면 `@SqlResultSetMapping`을 사용
+- `@ColumnResult` : 스칼라 값 매핑
+- `@FieldResult` : 스칼라 값 매핑하지만 `@ColumnResult`보다 우선순위 높음
+    - 결과 셋에 컬럼명이 중복일때 용이
+
+```java
+
+//  @ColumnResult 사용
+@Entity
+@SqlResultSetMapping(
+        name = "teamWithMemberCount",
+        entities = {@EntityResult(entityClass = Team.class)},
+        columns = {@ColumnResult(name = "CNT_MEMBER")}
+)
+public class Team {
+    //...
+}
+
+// @FieldResult 사용
+@SqlResultSetMapping(
+        name = "teamWithMemberCount",
+        entities = {
+                @EntityResult(entityClass = Team.class, fields = {
+                        @FieldResult(name = "id", column = "ID"),
+                        @FieldResult(name = "teamName", column = "TEAM_NAME")})},
+        columns = {@ColumnResult(name = "CNT_MEMBER")})
+public class Team {
+    //...
+}
+```
+
+````
+String sql = "SELECT ID, TEAM_NAME, CNT_MEMBER" +
+             "FROM TEAM T" +
+              "LEFT JOIN " +
+              "( SELECT TEAM_ID, COUNT(*) AS CNT_MEMBER" +
+              "  FROM MEMBER M INNER JOIN TEAM T ON M.TEAM_ID = T.ID" +
+              "  GROUP BY TEAM_ID ) TI " +
+              "ON T.ID = TI.TEAM_ID";
+
+Query nativeQuery = em.createNativeQuery(sql, "teamWithMemberCount");
+List<Object[]> result = nativeQuery.getResultList();
+````
+
+#### 결과 매핑 어노테이션
+
+- `@SqlResultSetMapping`
+    - name : 결과 매핑 이름
+    - entities : `@EntityResult`로 Entity를 결과로 매핑
+    - columns : `@ColumnResult`로 컬럼을 결과로 매핑
+- `@EntityResult`
+    - entityClass : 결과를 매핑할 Entity 클래스
+    - fields : `@FieldResult`로 결과를 Entity 필드에 매핑
+    - discriminatorColumn : 상속 구조일 때 구분 컬럼
+- `@FieldResult`
+    - name : Entity 필드명
+    - column : 결과 셋의 컬럼명
+- `@ColumnResult`
+    - name : 결과 셋의 컬럼명
+
+### 5.2 Named native SQL
+
+```java
+
+@Entity
+@NamedNativeQuery(
+        name = "Member.isOlderThan",
+        query = "SELECT ID, AGE, NAME, TEAM_ID FROM MEMBER WHERE AGE > ?",
+        resultClass = Member.class
+)
+public class Member {
+    //...
+}
+
+public class Foo {
+    public void test() {
+
+        TypedQuery<Member> nativeQuery = em.createNamedQuery("Member.isOlderThan", Member.class)
+                .setParameter(1, 10);
+
+    }
+
+}
+```
+
+```java
+// @SqlResultSetMapping, @NamedNativeQuery 같이 사용 
+
+@Entity
+@SqlResultSetMapping(
+        name = "teamWithMemberCount",
+        entities = {
+                @EntityResult(entityClass = Team.class, fields = {
+                        @FieldResult(name = "id", column = "ID"),
+                        @FieldResult(name = "teamName", column = "TEAM_NAME")})},
+        columns = {@ColumnResult(name = "CNT_MEMBER")})
+@NamedNativeQuery(
+        name = "Member.teamWithMemberCount",
+        query = "SELECT ID, TEAM_NAME, CNT_MEMBER" +
+                "FROM TEAM T" +
+                "LEFT JOIN " +
+                "( SELECT TEAM_ID, COUNT(*) AS CNT_MEMBER" +
+                "  FROM MEMBER M INNER JOIN TEAM T ON M.TEAM_ID = T.ID" +
+                "  GROUP BY TEAM_ID ) TI " +
+                "ON T.ID = TI.TEAM_ID",
+        resultSetMapping = "teamWithMemberCount"
+)
+
+public class Member {
+    //...
+}
+
+public class Foo {
+    public void test() {
+
+        List<Object[]> resultList = em.createNamedQuery("Member.teamWithMemberCount")
+                .getResultList();
+    }
+}
+```
+
+#### `@NamedNativeQuery`
+
+| 속성               | 기능                        |
+|------------------|---------------------------|
+| name             | 네이티브 쿼리 이름                |
+| query            | 네이티브 쿼리                   |
+| hints            | hibernate 같은 구현체가 제공하는 힌트 |
+| resultClass      | 결과 매핑할 Entity 클래스         |
+| resultSetMapping | 결과 매핑 이름                  |
+
+### 5.3 Native SQL XML에 정의
+
+- native query는 보통 장황하므로, xml 에 관리를 추천
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappiings>
+    <named-native-query name="Member.isOlderThan">
+        <query>
+            <![CDATA[
+                SELECT ID, AGE, NAME, TEAM_ID FROM MEMBER WHERE AGE > ?
+                ]]>
+        </query>
+    </named-native-query>
+</entity-mappings>
+````
+
+### 5.4 Native SQL 정리
+
+- Native SQL 사용빈도가 많아지면 DBMS 의존도가 심해지고 관리가 어려워짐
+- 사용 우선순위
+    1. 표준 JPQL
+    2. hibernate가 제공하는 JPQL 확장 기능
+    3. Native SQL
+    4. JDBC API 직접 사용, MyBatis 같은 SQL 매퍼 사용
+
+### 5.5 stored procedure (JPA 2.1)
+
+````
+// 순서 기반 파라미터
+StoredProceduceQuery procedureQuery = em.createStoredProcedureQuery("proc_multiply");
+procedureQuery.registerStoredProcedureParameter(1, Integer.class, ParameterMode.IN);
+procedureQuery.registerStoredProcedureParameter(2, Integer.class, ParameterMode.OUT);
+procedureQuery.setParameter(1, 100);
+procedureQuery.execute();
+
+Integer out = (Integer) procedureQuery.getOutputParameterValue(2);
+````
+
+````
+// 이름 기반 파라미터
+StoredProceduceQuery procedureQuery = em.createStoredProcedureQuery("proc_multiply");
+procedureQuery.registerStoredProcedureParameter("inParam", Integer.class, ParameterMode.IN);
+procedureQuery.registerStoredProcedureParameter("outParam", Integer.class, ParameterMode.OUT);
+procedureQuery.setParameter("inParam", 100);
+procedureQuery.execute();
+
+Integer out = (Integer) procedureQuery.getOutputParameterValue("outParam");
+````
+
+#### Named stored procedure 사용
+
+- entity, xml에 정의 가능
+
+```java
+
+@NamedStoredProcedureQuery(
+        name = "multiply",
+        procedureName = "proc_multiply",
+        parameters = {
+                @StoredProcedureParameter(name = "inParam", type = Integer.class, mode = ParameterMode.IN),
+                @StoredProcedureParameter(name = "outParam", type = Integer.class, mode = ParameterMode.OUT)
+        })
+@Entity
+public class Member {
+    //...
+}
+````
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappiings>
+    <named-stored-procedure-query name="multiply" procedure-name="proc_multiply">
+        <parameter name="inParam" mode="IN" class="java.lang.Integer"/>
+        <parameter name="outParam" mode="OUT" class="java.lang.Integer"/>
+    </named-stored-procedure-query>
+</entity-mappings>
+````
+
+````
+// named stored procedure 사용
+
+StoredProcedureQuery procedureQuery = em.createNamedStoredProcedureQuery("multiply");
+procedureQuery.setParameter("inParam", 100);
+procedureQuery.execute();
+
+Integer out = (Integer) procedureQuery.getOutputParameterValue("outParam");
+````
+
 ## 6. 객체지향 쿼리 심화
 
 ## 7. 정리
