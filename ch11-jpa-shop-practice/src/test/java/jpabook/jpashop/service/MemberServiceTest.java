@@ -11,6 +11,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import javax.transaction.Transactional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = "classpath:appConfig.xml")
@@ -36,7 +37,24 @@ public class MemberServiceTest {
 
         // Then
         assertEquals(member, repository.findOne(idSaved));
-
-
     }
+
+    @Test
+    public void test2() throws Exception {
+
+        // Given
+        Member karina = new Member();
+        karina.setName("카리나");
+        
+        Member kaina_ = new Member();
+        kaina_.setName("카리나");
+
+        // When
+        service.join(karina);
+        service.join(kaina_); // 예외가 발생해야 한다.
+
+        // Then
+        fail("예외가 발생해라!");
+    }
+
 }
