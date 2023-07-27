@@ -1330,9 +1330,287 @@ List<Member> members = query.getResultList();
 
 - `hibernate-jpamodelgen` 라이브러리 추가
 
+## 4. QueryDSL
+
+- Criteria의 단점 : 코드가 장황하고, SQL 가독성이 떨어짐
+- QueryDSL 은 Criteria의 단점을 보완한 라이브러리
+    - sql을 코드로 작성
+    - 쉽고 간결하고, sql과 비슷한 구조로 코드가 작성됨
+    - JPQL 빌더
+- HQL 지원에서 시작하여 현재는 JPA, JDBC, Hibernate, Mongo DB 등 다양한 지원
+
+### 4.1 QueryDSL 설정
+
+- `querydsl-jpa` 라이브러리 추가
+- `querydsl-apt` 라이브러리 추가 : 쿼리 타입 생성 시 사용
+- 쿼리 타입 생성용 플러그인 추가
+
+### 4.2 시작
+
+`com.mysema.query.jpa.impl.JPAQuery`를 사용
+
+````
+EntityManager em = emf.createEntityManager();
+JPAQuery query = new JPAQuery(em);
+QMember qMember = new QMember("m"); // 별칭 M 지정
+
+Lsit<Member> members = query.from(qMember)
+                              .where(qMember.username.eq("카리나"))
+                              .orderBy(qMember.age.desc())
+                              .list(qMember);
 ````
 
-## 4. QueryDSL
+````
+// 쿼리 타입 지정 방법
+QMember qMember = new QMember("m"); // 별칭 M 지정
+QMember qMember = QMember.member; // 기본 인스턴스 사용
+````
+
+### 4.3 검색 조건 쿼리
+
+````
+/* JPQL : select t 
+      from Team t 
+      where t.name = 'Aespa' 
+       */
+       
+JPAQuery query = new JPAQuery(em);
+QTeam qTeam = QTeam.team;
+List<Team> teams = query.from(qTeam)
+                        .where(qTeam.name.eq("Aespa"))
+                        .list(qTeam);
+````
+
+### 4.4 결과 조회
+
+- `uniqueResult()` : 단건 조회, 결과가 하나 이상이면 `NonUniqueResultException` 발생
+- `singleResult()` : 단건 조회, 결과가 하나 이상이면 처음 데이터 반환
+- `list()` : 결과가 하나 이상일 때
+
+### 4.5 페이징과 정렬
+
+````
+QTeam team = QTeam.team;
+List<Team> teams = query.from(team)
+                        .orderBy(team.name.desc())
+                        .offset(10)
+                        .limit(20)
+                        .list(team);
+````
+
+````
+// QueryModifiers 사용
+QueryModifiers queryModifiers = new QueryModifiers(20L, 10L); // limit, offset
+List<Team> teams = query.from(team)
+                        .orderBy(team.name.desc())
+                        .restrict(queryModifiers)
+                        .list(team);
+````
+
+````
+// 페이징 처리
+SearchResults<Team> results = query.from(team)
+                                    .orderBy(team.name.desc())
+                                    .offset(10)
+                                    .limit(20)
+                                    .listResults(team);
+
+long total = results.getTotal(); // 검색된 전체 데이터 수
+long limit = results.getLimit();
+long offset = results.getOffset();
+List<Team> teams = results.getResults(); // 조회된 데이터
+````                            
+
+### 4.6 그룹
+
+````
+query.from(team)
+        .groupBy(team.name)
+        .having(team.isDeleted.eq("N"))
+        .list(team);
+````
+
+### 4.7 조인
+
+- 내부 조인, 외부 조인, 페치 조인 지원
+- `join(join target, alias query type)`
+
+````
+// 기본 조인
+QTeam team = QTeam.team;
+QMember member = QMember.member;
+QMemberPhone memberPhone = QMemberPhone.memberPhone;
+
+query.from(team)
+    .join(team.members, member)
+    .leftJoin(member.phones, memberPhone)
+    .list(team);
+    
+// on 활용
+query.from(team)
+    .join(team.members, member)
+    .on(member.age.gt(10))
+    .list(team);
+    
+// fetch join
+query.from(team)
+  .innerJoin(team.members, member).fetch()
+  .leftJoin(member.phones, memberPhone).fetch()
+  .list(team);
+  
+// 세타 조인
+query.from(team, member)
+  .where(team.member.eq(member))
+  .list(team);
+````
+
+### 4.8 서브 쿼리
+
+`com.mysema.query.jpa.JPASubQuery` 사용
+
+````
+QTeam team = QTeam.team;
+QMember member = QMember.member;
+
+query.from(team)
+      .where(team.in(
+        new JPASubQuery().from(member)
+                         .where(member.age.gt(10))
+                         .list(team))
+      .list(team);
+````
+
+### 4.9 프로젝션과 결과 반환
+
+````
+// 프로젝션 대상이 하나
+QMember member = QMember.member;
+list<String> memberNameList = query.from(member).list(memer.username);
+
+// 여러 컬럼, 튜플
+QMember member = QMember.member;
+List<Tuple> result = query.from(member).list(member.username, member.age);
+````
+
+#### 빈 생성
+
+`com.mysema.query.types.Projections` 사용
+
+```java
+public class MemberDTO {
+    private String name;
+    private int age;
+
+    // Constructor, getter, setter
+}
+
+public class Foo {
+
+    public void test() {
+        // 프로퍼티 접근 (setter)
+        QMember member = QMember.member;
+        List<MemberDTO> result = query.from(member)
+                .list(Projections.bean(MemberDTO.class, member.username.as("name"), member.age));
+
+        // 필드 직접 접근
+        List<MemerDTO> result = query.from(member)
+                .list(Projections.fields(MemberDTO.class, member.username.as("name"), member.age));
+
+        // 생성자 사용
+        List<MemberDTO> result = query.from(member)
+                .list(Projections.constructor(MemberDTO.class, member.username, member.age));
+    }
+}
+````
+
+#### DISTINCT
+
+````
+QMember member = QMember.member;
+List<String> result = query.distinct()
+                          .from(member)
+                          .list(member.username);
+````
+
+### 4.10 수정, 삭제 배치 쿼리
+
+`com.mysema.query.jpa.JPAUpdateClause` 사용
+
+````
+QMember member = QMember.member;
+
+// 수정
+JPAUpdateClause updateClause = new JPAUpdateClause(em, member);
+
+long count = updateClause.where(team.name.eq("Aespa"))
+                         .set(team.name, "에스파")
+                         .execute();
+                         
+// 삭제
+JPAUpdateClause deleteClause = new JPAUpdateClause(em, member);
+long count = deleteClause.where(team.name.eq("Aespa"))
+                         .execute(member);
+````
+
+### 4.11 동적 쿼리
+
+`com.mysema.query.BooleanBuilder` 사용
+
+````
+SearchParam param = new SearchParam();
+param.setCity("서울");
+param.setAge(23);
+
+QMember member = QMember.member;
+BooleanBuilder builder = new BooleanBuilder();
+
+if(StringUtils.hasText(param.getCity())) {
+    builder.and(member.name.eq(param.getCity()));
+}
+
+if(param.getAge() != null) {
+    builder.and(member.age.eq(param.getAge()));
+}
+
+List<Member> members = query.from(member)
+                            .where(builder)
+                            .list(member);
+````
+
+### 4.12 메소드 위임, Delegate methods
+
+- 쿼리 타입에 검색조건 직접 정의
+
+```java
+import javafx.beans.binding.BooleanExpression;
+
+public class MemberExpression {
+
+    @QueryDelegate(Member.class)
+    public static BooleanExpression isOlderThan(QMember member, Integer age) {
+        return member.age.gt(age);
+    }
+
+}
+
+// 쿼리 타입에 생성된 자동 결과
+public class QMember extends EntityPathBase<Member> {
+    //...
+    public BooleanExpression isOlderThan(Integer age) {
+        return MemberExpression.isOlderThan(this, age);
+    }
+}
+```
+
+````
+query.from(member)
+      .where(member.isOlderThan(21))
+      .list(member);
+````
+
+### 4.13 QueryDSL 정리
+
+- QueryDSL은 코드로 JPQL을 작성 + 동적 쿼리 작성을 편리하게 지원
 
 ## 5. 네이티브 SQL
 
