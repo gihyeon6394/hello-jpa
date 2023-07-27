@@ -1894,4 +1894,105 @@ Integer out = (Integer) procedureQuery.getOutputParameterValue("outParam");
 
 ## 6. 객체지향 쿼리 심화
 
+### 6.1 벌크 연산
+
+- 쿼리 한 번으로 테이블 여러 로우 변경
+- **많은 row 수정 시 Entity 건마다 UPDATE 문은 비효율**
+- JPA 표준은 아니지만, hibernate 는 벌크 INSERT 지원
+- 가능하면 벌크연산을 가장 먼저 실행할 것
+    - 상황에 따라 영속성 컨텍스트 초기화 필요
+
+````
+String sql = "UPDATE MEMBER M SET M.AGE = AGE + 1 WHERE M.TEAM_ID = ?";
+int resultCount = em.createNativeQuery(sql)
+                    .setParameter(1, teamId)
+                    .executeUpdate();
+````
+
+- **벌크 연산은 영속성 컨텍스트를 통하지 않고 직접 DB에 쿼리를 날림**
+- 영속성 컨텍스트의 데이터가 실제 데이터와 다를 수 있음
+
+#### 해결 방안
+
+- `em.refresh()` : Entity 다시 조회
+    - e.g. `em.refresh(member)` : member 엔티티만 초기화
+- 벌크 연산 먼저 실행
+    - 벌크연산 이후 Entity를 조회하면 DB에서 조회
+- 벌크 연산 수행 후 영속성 컨텍스트 초기화
+    - 영속성 컨텍스트를 초기화하여 다시 조회 시 DB에서 가져오게 함
+
+### 6.2 영속성 컨텍스트와 JPQL
+
+- JPQL로 조회한 데이터 중 Entity만 영속성 컨텍스트에 관리
+- JPQL은 항상 DB에 조회 (`find()`와 다른점)
+    - 1차 캐시에 이미 있는 Entity면 조회한 값을 버리고, 1차 캐시 반환
+
+#### JPQL로 조회한 Entity와 영속성 컨텍스트
+
+- JPQL로 조회한 Entity 중 영속성 컨텍스트 1차캐시에 있는 Entity는 1차캐시에서 조회
+    - **실제 DB의 Entity는 버린다**
+    - 1차 캐시에 없으면 조회한 값을 1차캐시에 넣고 1차 캐시를 반환
+- **영속성 컨텍스트는 영속 상태인 Entity의 동일성을 보장한다**
+    - 따라서 `em.find()`이건 JPQL이건 동일한 Entity를 반환
+
+#### `find()` vs JPQL
+
+- `find()`는 1차캐시에서 Entity를 반환하고, 없으면 DB에서 조회
+    - 메모리에서 바로 찾으므로 성능상 이점
+- JPQL은 항상 DB에서 조회
+    - DB에서 먼저 조회하고, 1차캐시에 있을 경우에는 조회한 데이터 버림
+
+### 6.3 JPQL과 플러시 모드
+
+- flush : 영속성 컨텍스트의 내용을 DB에 반영하는 것
+    - `FlushModeType.AUTO` : 커밋이나 쿼리를 실행하기 전에 플러시 (기본값)
+    - `FlushModeType.COMMIT` : 커밋할 때만 플러시
+
+#### 쿼리와 플러시 모드
+
+````
+// FlushModeType.AUTO 일 떄
+// 영속성 컨텍스트 변화
+member.setName("카리나");
+
+
+// JPQL 쿼리 실행
+// 실행 전에 플러시가 자동으로 호출됨
+Member member = em.createQuery("SELECT m FROM Member m Where m.name ='카리나`", Member.class)
+                  .getSingleResult();
+
+System.out.println(member.getName()); // 카리나
+````
+
+````
+// FlushModeType.COMMIT 일 때
+
+// 영속성 컨텍스트 변화
+member.setName("카리나");
+
+// em.flush(); // 직접 호출해도 됨
+
+// JPQL 쿼리 실행
+// 실행 전에 플러시가 자동으로 호출되지 않음
+Member member = em.createQuery("SELECT m FROM Member m Where m.name ='카리나`", Member.class) 
+                  .setFlushMode(FlushModeType.AUTO) // 플러시 모드 변경
+                  .getSingleResult();
+                  
+System.out.println(member.getName()); // 카리나
+````
+
+#### 플러시 모드와 최적화
+
+- JPA를 통하지 않는 어떤 방법이건 flush를 신경 써야함
+    - 쿼리 전 flush를 하는 것이 안전
+- `FlushModeType.COMMIT` : 트랜잭션 COMMIT 시에만 flush 함
+    - 플러시가 자주 일어나는 상황에 적용할만함
+
 ## 7. 정리
+
+- JPQL은 SQL을 추상화하여 DBMS에 의존하지 않음
+- Criteria, QueryDSL은 JPQL을 작성해주는 빌더일 뿐
+    - 동적 쿼리 작성이 편함
+- Criteria는 JPA 공식 지원이지만 QueryDSL이 더 편함ㅣ
+- JPA도 Native SQL을 지원하지만 DBMS 의존적이므로 가장 후순위에 둘 것
+- JPQL은 벌크 연산을 지원
