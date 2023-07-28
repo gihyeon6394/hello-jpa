@@ -23,6 +23,12 @@ public class Delivery {
     @OneToOne(mappedBy = "delivery")
     private Order order;
 
+    public Delivery() {
+    }
+
+    public Delivery(Address address) {
+    }
+
     public Order getOrder() {
         return order;
     }
@@ -31,6 +37,29 @@ public class Delivery {
         this.order = order;
     }
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public DeliveryStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(DeliveryStatus status) {
+        this.status = status;
+    }
+
+    public Address getAddress() {
+        return address;
+    }
+
+    public void setAddress(Address address) {
+        this.address = address;
+    }
 
     @Override
     public String toString() {
