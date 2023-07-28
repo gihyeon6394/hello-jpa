@@ -20,10 +20,10 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- 스프링 프레임워크 버전 -->
-        <spring-framework.version>4.1.6.RELEASE</spring-framework.version>
+        <spring-framework.version>4.3.6.RELEASE</spring-framework.version>
         <!-- JPA, 하이버네이트 버전 -->
         <!--<hibernate.version>5.4.13.Final</hibernate.version>-->
-        <hibernate.version>4.3.10.Final</hibernate.version>
+        <hibernate.version>4.3.11.Final</hibernate.version>
 
         <!-- 데이터베이스 버전 -->
         <tomcat-jdbc.version>8.5.69</tomcat-jdbc.version>
