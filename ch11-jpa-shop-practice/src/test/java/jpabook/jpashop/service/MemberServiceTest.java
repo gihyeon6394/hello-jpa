@@ -39,7 +39,7 @@ public class MemberServiceTest {
         assertEquals(member, repository.findOne(idSaved));
     }
 
-    @Test
+    @Test(expected = IllegalStateException.class)
     public void test2() throws Exception {
 
         // Given
@@ -54,7 +54,7 @@ public class MemberServiceTest {
         service.join(kaina_); // 예외가 발생해야 한다.
 
         // Then
-        fail("예외가 발생해라!");
+        fail("이미 존재하는 회원입니다.");
     }
 
 }
