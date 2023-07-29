@@ -15,7 +15,7 @@
 
 ### 1.1 스프링 컨테이너의 기본 전략
 
-<img src="img.png" width="70%">
+<img src="img.png" width="80%">
 
 - 트랜잭션 범위의 영속성 컨텍스트 전략 : 트랜잭션 범위와 영속성 컨텍스트의 생명주기가 같음
 - 트랜잭션 시작 시 영속성 컨텍스트를 생성하고, 트랜잭션을 종료하면 영속성 컨텍스트도 종료
@@ -210,7 +210,7 @@ public class MemberService {
 
 ### 2.4 FACADE 계층 추가
 
-<img src="img_1.png" width="70%">
+<img src="img_1.png" width="80%">
 
 - 프레젠테이션 계층과 서비스 계층의 의존성을 낮추기 위해 FACADE 계층 추가
 - FACADE 계층에서 프레젠테이션 계층에 필요한 프록시 Entity를 초기화
@@ -259,7 +259,7 @@ public class MemberService {
 
 ### 3.1 과거 OSIV : 요청 당 트랜잭션, Transaction Per Request
 
-<img src="img_3.png" width="70%">
+<img src="img_3.png" width="80%">
 
 - client 요청이 들어오면 Servlet filter 나 Spring Interceptor에서 트랜잭션 시작
 
@@ -329,7 +329,7 @@ public class MemberDTO {
 
 ### 3.2 스프링 OSIV : 비즈니스 계층 트랜잭션
 
-<img src="img_5.png" width="70%">
+<img src="img_5.png" width="80%">
 
 `spirng-orm.jar` 라이브러리 추가
 
@@ -415,7 +415,7 @@ public class MemberController {
 
 ## 4. 너무 엄격한 계층
 
-<img src="img_6.png" width="70%">
+<img src="img_6.png" width="80%">
 
 - 너무 엄격한 계층 분리는 비효율적
 - 간단한 SELECT는 프레젠테이션 계층에서도 직접 접근하면 효율적
