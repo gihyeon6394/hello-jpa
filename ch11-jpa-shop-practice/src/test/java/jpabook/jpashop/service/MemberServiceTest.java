@@ -10,8 +10,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import javax.transaction.Transactional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = "classpath:appConfig.xml")
@@ -37,6 +36,10 @@ public class MemberServiceTest {
 
         // Then
         assertEquals(member, repository.findOne(idSaved));
+
+        assertTrue(member == repository.findOne(idSaved)); // 1차 캐시에서 조회
+
+
     }
 
     @Test(expected = IllegalStateException.class)
@@ -45,7 +48,7 @@ public class MemberServiceTest {
         // Given
         Member karina = new Member();
         karina.setName("카리나");
-        
+
         Member kaina_ = new Member();
         kaina_.setName("카리나");
 

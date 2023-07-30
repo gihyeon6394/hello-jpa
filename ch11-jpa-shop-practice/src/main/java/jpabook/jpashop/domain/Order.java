@@ -18,11 +18,11 @@ public class Order {
 
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "MEMBER_ID")
+    @JoinColumn(name = "ID")
     private Member member;
 
     @OneToOne
-    @JoinColumn(name = "DELIVERY_ID")
+    @JoinColumn(name = "ID")
     private Delivery delivery;
 
     @Temporal(TemporalType.TIMESTAMP)
