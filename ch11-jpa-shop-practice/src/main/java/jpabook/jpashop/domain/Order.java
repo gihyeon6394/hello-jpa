@@ -14,15 +14,16 @@ public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ID")
     private Long id;
 
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ID")
+    @JoinColumn(name = "MEMBER_ID")
     private Member member;
 
     @OneToOne
-    @JoinColumn(name = "ID")
+    @JoinColumn(name = "DELIVERY_ID")
     private Delivery delivery;
 
     @Temporal(TemporalType.TIMESTAMP)
