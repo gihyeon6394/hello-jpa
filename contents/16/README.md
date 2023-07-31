@@ -247,4 +247,77 @@ Board board = em.find(Board.class, 1L, LockModeType.PESSIMISTIC_WRITE, propertie
 
 ## 2. 2차 캐시
 
+<img src="img.png" width="80%">
+
+JPA가 제공하는 Application 범위의 Cache
+
+### 2.1 1차 캐시와 2차 캐시
+
+- 네트워크를 통한 DB 접근은 JVM의 메모리 캐시에 접근하는 비용보다 훨씬 비쌈
+
+#### 1차 캐시
+
+<img src="img_1.png" width="70%">
+
+- 영속성 컨텍스트 내부에 존재하는 캐시
+- 생명주기 : 영속성 컨텍스트와 같음
+    - 트랜잭션이 종료되면 1차 캐시가 없어짐
+    - OSIV의 경우 Client의 요청이 끝나면 1차 캐시가 없어짐
+- 키고 끌수 있는 옵션 아님
+- 사실상 영속성 컨텍스트가 1차 캐시 그 자체
+- 같은 Entity가 이ㅏㅆ으면 해당 Entity를 그대로 반환 (동일성 보장)
+
+### 2차 캐시, 공유 캐시, Shared Cache, L2 Cache
+
+<img src="img_2.png" width="80%">
+
+- Application 범위의 Cache
+- 생명주기 Application이 종료될 때까지 유지
+- 2차 캐시를 반환 시 복사본 반환
+    - 동시성 문제 해결
+    - 2차 캐시는 영속성 컨텍스트가 다르면 서로 다른 객체 (동일성 보장 안함)
+
+### 2.2 JPA 2차 캐시 기능
+
+#### 캐시 모드 설정
+
+`ojavax.persistence.Cacheable` : 캐시 사용 여부 설정
+
+```java
+
+@Entity
+@Cacheable
+public class Board {
+    // ...
+}
+````
+
+persistence.xml
+
+````
+<persistence-unit="test">
+    <shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
+</persistence-unit>
+````
+
+Spring Framewok
+
+````
+<bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+    <property name="sharedCacheMode" value="ENABLE_SELECTIVE"/>
+</bean>
+````
+
+| Cache Mode        | 설명                                       |
+|-------------------|------------------------------------------|
+| ALL               | 모든 Entity에 대해 캐시 사용                      |
+| NONE              | 모든 Entity에 대해 캐시 사용 안함                   |
+| ENABLE_SELECTIVE  | `@Cacheable(true)`인 Entity에 대해 캐시 사용     |
+| DISABLE_SELECTIVE | `@Cacheable(false)`인 Entity에 대해 캐시 사용 안함 |
+| UNSPECIFIED       | JPA 구현체 설정에 따름                           |
+
+#### 캐시 조회, 저장 방식
+
+
+
 ## 3. 정리
