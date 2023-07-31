@@ -1,5 +1,7 @@
 package jpabook.jpashop.domain.item;
 
+import jpabook.jpashop.domain.Visitor;
+
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 
@@ -29,6 +31,11 @@ public class Book extends Item {
 
     public void setIsbn(String isbn) {
         this.isbn = isbn;
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

@@ -1,5 +1,7 @@
 package jpabook.jpashop.domain.item;
 
+import jpabook.jpashop.domain.Visitor;
+
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 
@@ -27,6 +29,11 @@ public class Movie extends Item {
 
     public void setActor(String actor) {
         this.actor = actor;
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

@@ -5,9 +5,11 @@ import org.springframework.stereotype.Repository;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
 import java.util.List;
 
 @Repository
+//@Transactional
 public class MemberRepository {
 
     @PersistenceContext // Spring이 관리하는 EntityManger 의존성 주입

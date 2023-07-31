@@ -1,5 +1,9 @@
 package jpabook.jpashop.domain.item;
 
+import jpabook.jpashop.domain.Visitor;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 
@@ -13,7 +17,6 @@ public class Album extends Item {
 
     private String artist;
     private String etc;
-
 
 
     public String getArtist() {
@@ -33,10 +36,13 @@ public class Album extends Item {
     }
 
     @Override
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
+    }
+
+    @Override
     public String toString() {
-        return "Album{" +
-                "artist='" + artist + '\'' +
-                ", etc='" + etc + '\'' +
-                '}';
+        return ToStringBuilder
+                .reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
     }
 }

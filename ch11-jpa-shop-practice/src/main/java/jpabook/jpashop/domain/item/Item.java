@@ -1,6 +1,7 @@
 package jpabook.jpashop.domain.item;
 
 import jpabook.jpashop.domain.Category;
+import jpabook.jpashop.domain.Visitor;
 import jpabook.jpashop.exception.NotEnoughStockException;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -13,7 +14,7 @@ import java.util.List;
 @Table(name = "ITEM")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "DTYPE")
-public class Item {
+public abstract class Item {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,6 +22,8 @@ public class Item {
 
     @ManyToMany(mappedBy = "itemList")
     List<Category> categoryList = new ArrayList<>();
+
+    public abstract void accept(Visitor visitor);
 
     private String name;
     private int price;

@@ -1,12 +1,12 @@
 package jpabook.jpashop.service;
 
-import jpabook.jpashop.domain.Address;
-import jpabook.jpashop.domain.Member;
-import jpabook.jpashop.domain.Order;
-import jpabook.jpashop.domain.OrderStatus;
+import jpabook.jpashop.domain.*;
+import jpabook.jpashop.domain.item.Album;
+import jpabook.jpashop.domain.item.Book;
 import jpabook.jpashop.domain.item.Item;
 import jpabook.jpashop.exception.NotEnoughStockException;
 import jpabook.jpashop.repository.OrderRepository;
+import org.hibernate.proxy.HibernateProxy;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +19,8 @@ import javax.transaction.Transactional;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.fail;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = "classpath:appConfig.xml")
@@ -59,7 +61,7 @@ public class OrderServiceTest {
     }
 
     private Item createBook(String name, int price, int stockquantity) {
-        Item item = new Item();
+        Item item = new Book();
         item.setName(name);
         item.setPrice(price);
         item.setStockquantity(stockquantity);
@@ -112,5 +114,96 @@ public class OrderServiceTest {
         assertEquals("주문 취소시 상태는 CANCEL이다.", OrderStatus.CANCEL, orderRepository.findOne(orderId).getStatus());
         assertEquals("주문 취소시 재고가 증가해야 한다.", 10, item.getStockquantity());
 
+    }
+
+    @Test
+    public void testProxyInherit() {
+        Album nextlevel = new Album();
+        nextlevel.setName("Next Level");
+        nextlevel.setArtist("Aespa");
+        nextlevel.setPrice(20000);
+
+        em.persist(nextlevel);
+        em.flush();
+        em.clear();
+
+        Item proxyItem = em.getReference(Item.class, nextlevel.getId());
+
+        System.out.println("proxyItem = " + proxyItem.getClass()); // proxyItem = class jpabook.jpashop.domain.item.Item_$$_jvstd8d_7
+
+        if (proxyItem instanceof Album) { // false
+            System.out.println("proxyItem instanceof Album");
+            Album album = (Album) proxyItem; // java.lang.ClassCastException
+            System.out.println("album = " + album);
+        }
+
+        assertFalse(proxyItem.getClass() == Album.class); // Succeed
+        assertFalse(proxyItem instanceof Album); // Succeed
+        assertTrue(proxyItem instanceof Item); // Succeed
+
+    }
+
+    @Test
+    public void testProxyPoly() {
+        Album album = new Album();
+        album.setName("Next Level");
+        album.setArtist("Aespa");
+        album.setPrice(20000);
+        em.persist(album);
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setCount(1);
+        orderItem.setItem(album);
+        em.persist(orderItem);
+
+        em.flush();
+        em.clear();
+
+        OrderItem orderItemNextLevel = em.find(OrderItem.class, orderItem.getId());
+        Item itemNextLevel = orderItemNextLevel.getItem();
+
+        System.out.println("itemNextLevel = " + itemNextLevel.getClass()); // itemNextLevel = class jpabook.jpashop.domain.item.Item_$$_jvst9fa_7
+
+        assertFalse(itemNextLevel.getClass() == Album.class); // Succeed
+        assertFalse(itemNextLevel instanceof Album); // Succeed
+        assertTrue(itemNextLevel instanceof Item); // Succeed
+
+
+        Item unproxyItem = unProxy(itemNextLevel);
+        assertTrue(unproxyItem instanceof Album); // Succeed
+        assertFalse(unproxyItem == itemNextLevel); // Succeed
+    }
+
+    public static <T> T unProxy(Object entity) {
+        if (entity instanceof HibernateProxy) {
+            entity = ((HibernateProxy) entity).getHibernateLazyInitializer().getImplementation();
+        }
+        return (T) entity;
+
+    }
+
+
+    @Test
+    public void testVisitor() {
+
+        Album album = new Album();
+        album.setName("Next Level");
+        album.setArtist("Aespa");
+        album.setPrice(20000);
+        em.persist(album);
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setCount(1);
+        orderItem.setItem(album);
+        em.persist(orderItem);
+
+        em.flush();
+        em.clear();
+
+        OrderItem orderItemNextLevel = em.find(OrderItem.class, orderItem.getId());
+        Item itemNextLevel = orderItemNextLevel.getItem();
+
+        //PrintVisitor
+        itemNextLevel.accept(new PrintVisitor());
     }
 }
