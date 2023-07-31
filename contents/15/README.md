@@ -886,8 +886,6 @@ tx.commit();
 session.close();
 ````
 
-#### 4.4
-
 ### 4.4 SQL 쿼리 힌트 사용
 
 - JPA는 DBMS 벤더의 SQL 힌트 미지원
