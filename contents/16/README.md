@@ -247,7 +247,7 @@ Board board = em.find(Board.class, 1L, LockModeType.PESSIMISTIC_WRITE, propertie
 
 ## 2. 2차 캐시
 
-<img src="img.png" width="80%">
+<img src="img.png" width="90%">
 
 JPA가 제공하는 Application 범위의 Cache
 
@@ -269,7 +269,7 @@ JPA가 제공하는 Application 범위의 Cache
 
 ### 2차 캐시, 공유 캐시, Shared Cache, L2 Cache
 
-<img src="img_2.png" width="80%">
+<img src="img_2.png" width="90%">
 
 - Application 범위의 Cache
 - 생명주기 Application이 종료될 때까지 유지
@@ -318,6 +318,192 @@ Spring Framewok
 
 #### 캐시 조회, 저장 방식
 
+- 프로퍼티명
+    - 캐시 조회 모드 : `javax.persistence.cache.retrieveMode`
+    - 캐시 저장 모드 : `javax.persistence.cache.storeMode`
+- 옵션
+    - 캐시 조회 모드 : `javax.persistence.CacheRetrieveMode`
+        - `USE` : 캐시 사용, 기본값
+        - `BYPASS` : 캐시 사용 안함, DB 직접 접근
+    - 캐시 저장 모드 : `javax.persistence.CacheStoreMode`
+        - `USE` : 기본값, 캐시 사용, 캐시에 있으면 데이터를 갱신하지 않음, 등록 / 수정한 Entity도 캐시에 저장
+        - `BYPASS` : 캐시 사용 안함, DB 직접 접근
+        - `REFRESH` : `USE` + DB에서 조회한 Entity를 갱신
 
+````
+em.setProperty("javax.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS);
+em.setProperty("javax.persistence.cache.storeMode", CacheStoreMode.BYPASS);
+````
+
+````
+Map<String, Object> properties = new HashMap<>();
+properties.put("javax.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS);
+properties.put("javax.persistence.cache.storeMode", CacheStoreMode.BYPASS);
+
+em.find(Board.class, 1L, properties);
+````
+
+````
+em.createQuerty("SELECT b FROM Board b", Board.class)
+    .setHint("javax.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS)
+    .setHint("javax.persistence.cache.storeMode", CacheStoreMode.BYPASS)
+    .getResultList();
+````
+
+#### JPA 캐시 관리 API
+
+`javax.persistence.Cache` : JPA 캐시 관리 인터페이스
+
+```java
+public interface Cache {
+
+    // Entity가 캐시에 있는지 확인
+    public boolean contains(Class cls, Object primaryKey);
+
+    // 식별자로 캐시에 있는 Entity 제거
+    public void evict(Class cls, Object primaryKey);
+
+    // Entity 클래스로 캐시에 있는 모든 Entity 제거
+    public ovid evict(Class cls);
+
+    // 모든 Entity 제거
+    public void evictAll();
+
+    // 캐시에 있는 Entity 조회
+    public <T> T unwrap(Class<T> cls);
+}
+```
+
+### 2.3 Hibernate 와 ENCACHE 적용
+
+- Entity cache : Entity 단위로 캐시, 식별자로 Entity 조회, 컬렉션이 아닌 연관 Entity 조회
+- Collection cache : Entity와 연관된 컬렉션 캐시, 컬렉션이 Entity를 담고 있으면 식별자 값만 캐시
+- Query cache : 쿼리와 파라미터 정보를 키로 사용해서 쿼리 결과를 캐시, 결과가 Entity면 식별자 값만 캐시
+
+#### 환경설정
+
+`hibernate-encahce` 라이브러리 추가
+
+````
+<!-- encache.xml -->
+<encache>
+    <defaulCache maxElementsInMemory="10000" eternal="false" timeToIdleSeconds="120" timeToLiveSeconds="120" overflowToDisk="false" />
+</encache>
+
+<!-- persistence.xml -->
+<persistence-unit name="test">
+    <properties>
+        <property name="hibernate.cache.region.factory_class" value="org.hibernate.cache.ehcache.EhCacheRegionFactory"/>
+        <property name="hibernate.cache.use_second_level_cache" value="true"/>
+        <property name="hibernate.cache.use_query_cache" value="true"/>
+        <property name="hibernate.cache.use_minimal_puts" value="true"/>
+        <property name="hibernate.cache.use_structured_entries" value="true"/>
+        <property name="hibernate.generate_statistics" value="true"/>
+    </properties>
+</persistence-unit>
+````
+
+- `hibernate.cache.use_second_level_cache` : 2차 캐시 사용 여부
+- `hibernate.cache.use_query_cache` : 쿼리 캐시 사용 여부
+- `hibernate.cache.region.factory_class` : 캐시 구현체 설정
+- `hibernate.generate_statistics` : 통계 정보 출력 **(성능에 영향을 주므로, 개발환경에만 사용)**
+
+#### Entity Cache와 Collection Cache
+
+````java
+
+@Entity
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE) // Entity Cache
+public class Team {
+    // ...
+
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE) // Collection Cache
+    @OneToMany(mappedBy = "team", cascade = CascadeType.ALL)
+    private List<Member> memberList = new ArrayList<>();
+}
+````
+
+#### `@Cache`
+
+`org.hibernate.annotations.Cache` : 세밀한 캐시 설정
+
+| 속성        | 설명                                                                         |
+|-----------|----------------------------------------------------------------------------|
+| `usage`   | `CacheConcurrencyStrategy` Enum으로 캐시 동시성 사용 전략 설정                          |
+| `region`  | 캐시 지역 설정                                                                   |
+| `include` | 연관 객체 캐시 포함 여부 설정 </br> `non-lazy` : 연관 객체 캐시 포함 </br> `all` : 연관 객체 캐시 포함 |
+
+`CacheConcurrencyStrategy` 속성
+
+| 속성                     | 설명                                                                                      |
+|------------------------|-----------------------------------------------------------------------------------------|
+| `NONE`                 | 캐시 사용 안함                                                                                |
+| `READ_ONLY`            | 읽기 전용<br/>읽기 전용 객체를 반환하므로, 복사본이 아닌 원본 반환                                                |
+| `NONSTRICT_READ_WRITE` | 엄격하지 않은 읽고, 쓰기 전략 </br> 동시에 같은 Entity 수정 시 데이터 일관성 꺠질 가능성 </br>EHCACHE는 데이터 수정 시 캐시 무효화 |
+| `READ_WRITE`           | 읽고, 쓰기 전략 </br> READ COMMITED 격리 수준 </br>EHCACHE는 데이터 수정 시 캐시도 수정                       |
+| `TRANSACTIONAL`        | 컨테이너 관리환경에서 사용 </br>REPEATABLE READ 격리수준 제공 가능                                          |
+
+#### 캐시 영역, Cache Region
+
+- Entity Cache Region : `..Team`
+- Collection Cache Region : `..Team.memberList`
+
+#### 쿼리 캐시, Query Cache
+
+- 쿼리와 파라미터 정보를 Key로 쿼리 결과를 캐시
+- `hibernate.cache.use_query_cache`를 `true`로 설정해야함
+- **변경이 잦은 테이블에 대해 적용하면 성능 저하**
+
+````
+em.createQuery("SELECT t FROM Team t", Team.class)
+    .setHint("org.hibernate.cacheable", true)
+    .getResultList();
+````
+
+````java
+
+@Entity
+@NamedQuery(hint = @QUeryHint(name = "org.hibernate.cacheable", value = "true")
+        , name = "Team.findAll"
+        , query = "SELECT t FROM Team t")
+public class Team {
+    // ...
+}
+````
+
+#### 쿼리 캐시 영역
+
+다음 두 캐시 영역이 추가됨
+
+- `org.hibernate.cache.internal.StandardQueryCache` : 쿼리 캐시 저장 영역
+    - 쿼리, 쿼리 결과 집합, 쿼리 실행 시점 캐시
+- `org.hibernate.cache.spi.UpdateTimestampsCache` : 쿼리 캐시 갱신 영역
+    - 쿼리 캐시 갱신 시점 캐시
+    - 테이블명, 해당 테이블의 최근 변경된 타임스탬프
+
+````
+public List<Team> findTeamWithMembers(){
+
+    return em.createQuery("select t from Team t join t.memberList m", Team.class)
+        .setHint("org.hibernate.cacheable", true)
+        .getResultList();
+}
+````
+
+1. `StandardQueryCache` 을 확인
+2. `UpdateTimestampsCache` 의 날짜와 비교
+3. 변경된 이력이 있으면 캐시 갱신후 반환
+
+#### 쿼리 캐시와 컬렉션 캐시의 주의점
+
+- 쿼리 캐시나 컬렉션 캐시는 식별자 값만 캐싱
+- 성능 저하 : 식별자에 해당하는 Entity가 캐싱되어있지 않다면, DB `SELECT` 발생
+- 따라서 쿼리 캐시나 컬렉션 캐시의 대상 Entity는 Entity Cache가 적용되어있어야 함
 
 ## 3. 정리
+
+- ANSI 표준 트랜잭션 격리수준 4단계, 낮을수록 동시성은 증가하지만, 정합성 문제 발생 가능
+- 영속성 컨텍스트는 DB 트랜잭션이 READ COMMITED 격리수준이어도, REPEATABLE READ 제공
+- JPA는 낙관적 lock, 비관적 lock을 제공, 낙관적 lock은 application에서 구현하고, 비관적 lock은 DB에서 구현
+- 2차 캐시를 사용하면 애플리케이션 조회성능을 극적으로 향상시킬 수 있음
