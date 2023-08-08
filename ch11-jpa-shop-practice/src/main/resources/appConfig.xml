@@ -6,7 +6,7 @@
 
     <tx:annotation-driven/>
 
-    <context:component-scan base-package="jpabook.jpashop.service, jpabook.jpashop.repository"/>
+    <context:component-scan base-package="jpabook.jpashop.service, jpabook.jpashop.repository, jpabook.jpashop.config"/>
 
     <bean id="dataSource" class="org.apache.tomcat.jdbc.pool.DataSource">
         <property name="driverClassName" value="com.mysql.jdbc.Driver"/>

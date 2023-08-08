@@ -1,5 +1,6 @@
 package jpabook.jpashop.service;
 
+import com.querydsl.core.Tuple;
 import jpabook.jpashop.domain.*;
 import jpabook.jpashop.domain.item.Album;
 import jpabook.jpashop.domain.item.Book;
@@ -16,6 +17,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.transaction.Transactional;
+
+import java.util.List;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.fail;
@@ -36,7 +39,6 @@ public class OrderServiceTest {
     @Autowired
     private OrderRepository orderRepository;
 
-
     // 상품 주문
     @Test
     public void order() throws Exception {
@@ -51,6 +53,7 @@ public class OrderServiceTest {
 
         // Then
         Order getOrder = orderRepository.findOne(orderId);
+
 
         assertEquals("상품 주문시 상태는 ORDER", OrderStatus.ORDER, getOrder.getStatus());
         assertEquals("주문한 상품 종류 수가 정확해야 한다.", 1, getOrder.getOrderItemList().size());
@@ -206,4 +209,6 @@ public class OrderServiceTest {
         //PrintVisitor
         itemNextLevel.accept(new PrintVisitor());
     }
+
+
 }
